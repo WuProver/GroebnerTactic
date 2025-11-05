@@ -1,0 +1,30 @@
+name = "GroebnerTac"
+version = "0.1.0"
+keywords = ["math"]
+defaultTargets = ["GroebnerTac"]
+
+[leanOptions]
+pp.unicode.fun = true # pretty-prints `fun a ↦ b`
+autoImplicit = false
+relaxedAutoImplicit = false
+weak.linter.mathlibStandardSet = true
+maxSynthPendingDepth = 3
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.24.0-rc1"
+
+[[require]]
+name = "groebner"
+# git = "https://github.com/WuProver/groebner_proj.git"
+scope = "WuProver"
+# rev = "main"
+
+[[require]]
+name = "MonomialOrderedPolynomial"
+git = "https://github.com/WuProver/MonomialOrderedPolynomial.git"
+scope  = "WuProver"
+
+[[lean_lib]]
+name = "GroebnerTac"
