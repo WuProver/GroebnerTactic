@@ -201,8 +201,9 @@ elab "showGoal" : tactic => do
     match expr with
     | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder _ $R $instCommSemiring $poly $vars $r) =>
       -- dbg_trace "poly = {poly}"
-      dbg_trace "vars = {vars}"
-      dbg_trace "r = {r}"
+      -- dbg_trace "vars = {vars}"
+      -- dbg_trace "r = {r}"
+      logInfo m!"[DEBUG] vars = {vars}"
 
       let rec parsePoly (e : Expr) : Lean.MetaM String := do
         let e ← checkTypeQ e q(MvPolynomial $σ $R)
@@ -291,7 +292,11 @@ elab "showGoal" : tactic => do
           let vStr ← parsePoly v
           logInfo m!"[DEBUG] Singleton var: {vStr}"
           pure [vStr]
-        | _ => pure []
+        | ~q(singleton $v) =>
+          let vStr ← parsePoly v
+          logInfo m!"[DEBUG] Single var: {vStr}"
+          pure [vStr]
+        | _ => unreachable!
 
       let parsedPoly ← parsePoly poly
       let varsList ← parseVars vars
@@ -301,6 +306,8 @@ elab "showGoal" : tactic => do
       dbg_trace "parsed vars: {varsList}"
       dbg_trace "parsed polynomial: {parsedPoly}"
       dbg_trace "parsed remainder: {parsedR}"
+
+
 
     | _ =>
       dbg_trace "not a lex.IsRemainder"
@@ -316,10 +323,102 @@ elab "groebner" : tactic  => do
     match expr with
     | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsGroebnerBasis _ $R $instCommSemiring $basis $ideal) =>
       dbg_trace "basis = {basis}"
-      pure ()
+      logInfo m!"basis = {basis}"
+
+      let rec parsePoly (e : Expr) : Lean.MetaM String := do
+        let e ← checkTypeQ e q(MvPolynomial $σ $R)
+        match e with
+        | none => pure s!"unknown"
+        | some expr =>
+          match expr with
+          | ~q($a + $b) =>
+            -- let left ← parsePoly a
+            let a  ← parsePoly a
+            let b  ← parsePoly b
+            -- logInfo m!"[DEBUG]check {a}"
+            -- logInfo m!"[DEBUG]check {b}"
+            -- dbg_trace "[DEBUG] check {a}"
+            pure s!"({a} + {b})"
+            -- logInfo m!"FIND ADD LEFT: {left}"
+            -- let right ← parsePoly b
+            -- logInfo m!"FIND ADD RIGHT: {right}"
+            -- dbg_trace "FIND ADD: {left} and {right}"
+            -- pure s!"({left} + {right})"
+
+          | ~q($a * $b) =>
+            let left ← parsePoly a
+            let right ← parsePoly b
+            -- dbg_trace "FIND MUL: {left} and {right}"
+            pure s!"({left} + {right})"
+
+          -- | ~q(HPow.hPow $base $exp) =>
+          --   let baseStr ← parsePoly base
+          --   -- match base with
+          --   -- | ~q(MvPolynomial.X $idx) =>
+          --   dbg_trace "baseStr: {baseStr}"
+          --   match exp with
+          --   | ~q(@OfNat.ofNat _ _ $n) =>
+          --     dbg_trace "FOUND EXPONENT {n}"
+          --     pure s!"{baseStr}^{n}"
+          --   | _ => pure s!"{baseStr}^{exp}"
+
+          | ~q($a ^ ($n : ℕ)) =>
+            let baseStr ← parsePoly a
+            -- match baseStr with
+
+            let n ← try
+              let .isNat _ n _ ← NormNum.derive (α := q(ℕ)) n | failure
+              pure n.natLit!
+            catch _ =>
+              pure n.natLit!
+            -- dbg_trace "FOUND POW: {baseStr}^{n}"
+            pure s!"{baseStr}^{n}"
+            -- dbg_trace "FOUND POW: {baseStr}^{n}"
+          | ~q(MvPolynomial.X $idx) =>
+            match idx with
+            -- | ~q(@OfNat.ofNat _ _ $n) => pure s!"X_{n}"
+            -- | ~q(@OfNat.ofNat _ _ $n) => dbg_trace "FOUND VAR INDEX {n}"; pure s!"X_{n}"
+            -- | _ => pure s!"X_{idx}"
+            | ~q(@OfNat.ofNat _ _ $var) =>
+              match var with
+              | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
+              | _ => pure s!"X_{idx}"
+          | ~q(@OfNat.ofNat _ _ $n) =>
+            pure s!"{n}"
+          | ~q(@Zero.toOfNat0 _ $z) =>
+            logInfo m!"[DEBUG] Found zero constant{z}"
+            dbg_trace s!"[DEBUG] Found zero constant {z}"
+            pure "0"
+          | _ =>
+            pure s!"{e}"
+
+      let rec parseBasis(e : Q(Finset (MvPolynomial $σ $R))) : Lean.MetaM (List String) := do
+        match e with
+        | ~q(Insert.insert (self := $_inst) $a $b) =>
+          let VarA ← parsePoly a
+          let VarB ← parseBasis b
+          dbg_trace "See If enter this Branch"
+          logInfo m!"[DEBUG] Insert basis element: {a}"
+          logInfo m!"[DEBUG] Remaining basis: {b}"
+          pure (VarA :: VarB)
+        | ~q((∅: Finset (MvPolynomial _ _))) => pure []
+        | ~q(singleton $v) =>
+          let vStr ← parsePoly v
+          logInfo m!"[DEBUG] Singleton basis element: {vStr}"
+          pure [vStr]
+        | _ =>
+          unreachable!
+
+      let basislist <- parseBasis basis
+      dbg_trace "parsed basis: {basislist}"
+      logInfo m!"parsed basis: {basislist}"
+
+
+
 
 
 end IsRemainder
+
 
 namespace Mathlib.Tactic.IsGroebner
 
