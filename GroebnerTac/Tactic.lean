@@ -154,6 +154,7 @@ structure SageCoeffAndPower where
 
 namespace Poly
 open Lean
+variable {m : Type → Type} [Monad m] [MonadQuotation m] [MonadRef m]
 
 /- or
 structure V where
@@ -168,10 +169,17 @@ def V.mkQ {u u' : Lean.Level} (v : V) (σ : Q(Type $u))
     (instOfNat : Q((n : Nat) → OfNat $σ n))
     (R : Q(Type $u'))
     (instField : Q(Field $R)) : Q(MvPolynomial $σ $R) :=
-  let i : Q(Nat) := mkRawNatLit v.1
-  let e : Q(Nat) := mkRawNatLit v.2
+  let i : Q(Nat) := mkNatLit v.1
+  let e : Q(Nat) := mkNatLit v.2
   q(MvPolynomial.X ($instOfNat $i).ofNat ^ $e)
 
+def V.mkTerm (v : V) : m Term :=
+  let v' := Syntax.mkNumLit (toString v.1)
+  if v.2 ≠ 1 then
+    let e := Syntax.mkNumLit (toString v.2)
+    `(term| MvPolynomial.X $v':num ^ $e:num)
+  else
+    `(term| MvPolynomial.X $v':num)
 
 /- or
 structure Q where
@@ -183,7 +191,16 @@ def Q := Int × Nat
 deriving FromJson, ToJson, Repr
 
 def Q.mkQ (q : Q) : Q(ℚ) :=
-  Mathlib.Meta.NormNum.mkRawRatLit ((q.1 : ℚ) / q.2)
+  let n : Q(Int) := mkIntLit q.1
+  let d : Q(Nat) := mkNatLit q.2
+  q($n / $d)
+
+def Q.mkTerm (q : Q) : m Term :=
+  let n := Syntax.mkNumLit (toString q.1)
+  if q.2 = 1 then
+    `(term| $n:num)
+  else
+    `(term| ($n:num / $(Syntax.mkNumLit (toString q.2))))
 
 structure Mon where
   c : Q
@@ -200,6 +217,10 @@ def Mon.mkQ {u v : Lean.Level} (m : Mon) (σ : Q(Type u))
       let m := m.mkQ σ instOfNat R instField
       q($p * $m))
 
+def Mon.mkTerm (m' : Mon) : m Term := do
+  let c : Term ← `(term| MvPolynomial.C $(← m'.c.mkTerm))
+  m'.e.foldlM (fun p m ↦ do `(term| $p * $(← m.mkTerm))) c
+
 def Polynomial := List Poly.Mon
 deriving FromJson, ToJson, Repr
 
@@ -212,6 +233,9 @@ def Polynomial.mkQ {u v : Lean.Level} (p : Polynomial) (σ : Q(Type $u))
     (fun p m ↦
       let m := m.mkQ σ instOfNat R instField
       q($p + $m))
+
+def Polynomial.mkTerm (p : Polynomial) : m Term := do
+  p.foldlM (fun p m ↦ do `(term| $p + $(← m.mkTerm))) (← `(0))
 
 end Poly
 
@@ -237,15 +261,15 @@ end Poly
 #check Lean.MetaM Unit
 
 open Qq in
-#eval do
+#eval show TermElabM Unit from do
   let Except.ok parsed := Lean.Json.parse
       "[{\"c\" : [1, 2], \"e\": [[0, 2], [2, 3]]}, {\"c\" : [3, 5], \"e\": [[4, 1]]}]" | failure
+  logInfo (toString parsed)
   logInfo m!"{parsed}"
   let Except.ok p := Lean.fromJson? (α := Poly.Polynomial) parsed | failure
-  let instOfNat ← Qq.synthInstanceQ q((n : Nat) → OfNat Nat n)
-  let instField ← Qq.synthInstanceQ q(Field ℚ)
-  let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
+  let p ← p.mkTerm
   Lean.logInfo p
+  Lean.logInfo <| show Expr from (← Term.elabTerm p .none)
 
 -- def qToRat : Poly.Q → ℚ
 --   | (n, d) => if h : d ≠ 0 then q(n/d)
@@ -313,17 +337,15 @@ def parseResult (result : Except String Poly.Polynomial) : Lean.MetaM (Option (P
   | .error e => IO.throwServerError <|
   s!"Error when convert result to polynomial structure Error: {e}"
 
-def processElement (jsonElement : Json) : MetaM Expr := do
-  let mon_result := Lean.fromJson? (α := Poly.Polynomial) jsonElement
-  let mon ← parseResult mon_result
-  match mon with
-      | none => IO.throwServerError "There is not any result be parsed"
-      | some p =>
-        let instOfNat ← Qq.synthInstanceQ q((n : Nat) → OfNat Nat n)
-        let instField ← Qq.synthInstanceQ q(Field ℚ)
-        let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
-        Lean.logInfo p
-        pure p
+def processElement (jsonElement : Json) : MetaM Term := do
+  let poly_result := Lean.fromJson? (α := Poly.Polynomial) jsonElement
+  let poly ← parseResult poly_result
+  match poly with
+  | none => IO.throwServerError "There is not any result be parsed"
+  | some p =>
+    let p ← p.mkTerm
+    Lean.logInfo p
+    pure p
 
 def exprListToSyntaxArray (es : List Expr) : MetaM (Array Syntax) := do
   es.toArray.mapM fun e => do
@@ -550,21 +572,13 @@ elab "remainder" : tactic => do
       --   let runUse := fun x => do Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
       --   runUse x
       let processList := arr.mapM processElement
-      let resultArray ← processList
-      let xs := resultArray.toList
-      let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
-      let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
-      logInfo m!"[DEBUG] {xs}"
-      let xs_get := q($get $xs)
-      logInfo m!"[DEBUG] {xs_get}"
-      let xs_get <- Lean.PrettyPrinter.delab xs_get
-      logInfo m!"[CHECK {xs_get}]"
+      let resultArray : Array Term ← processList
+      let xs : Term ← `(term| [$resultArray:term,*].get)
+      logInfo m!"[DEBUG] {xs}, elab {← Term.elabTerm xs q(MvPolynomial $σ $R)}"
       let runUse := fun x => do Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
-      evalTactic (← `(tactic|{
-         simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
-         rw [isRemainder_range_fin, ← exists_and_right]
-      }))
-      runUse xs_get
+      evalTactic (← `(tactic| simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]))
+      evalTactic (← `(tactic| rw [isRemainder_range_fin, ← exists_and_right]))
+      runUse xs
 
 
 
