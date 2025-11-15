@@ -32,32 +32,37 @@ example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
   -- convert set to `Set.image list.get`
-  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+  simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
   -- use index
-  rw [isRemainder_range_fin]
+  rw [isRemainder_range_fin, ← exists_and_right]
+  use [X 0, X 1 ^ 2, X 2 ^ 3, X 3 ^ 4].get
   split_ands
-  · use [X 0, X 1 ^ 2, X 2 ^ 3, X 3 ^ 4].get
-    split_ands
-    · simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
-      all_goals decide +kernel-- PIT, proof by reflection
-    · intro i
-      fin_cases i
+  · simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
+    all_goals decide +kernel-- PIT, proof by reflection
+  · intro i
+    fin_cases i
+    all_goals {
+      simp [-List.get_eq_getElem, List.get]
       all_goals {
-        simp [-List.get_eq_getElem, List.get]
-        all_goals {
-          rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-            SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-            ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-          decide +kernel
-        }
+        rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
+          SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
+          ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
+        decide +kernel
       }
-  · simp
+    }
+  simp
 
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-    -- showGoal
+    remainder
+
+
     sorry
+
+
+
+    -- sorry
 
 
 set_option linter.unusedSimpArgs false in
@@ -102,8 +107,8 @@ example :
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
       {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
-      showGoal
-      -- sorry
+    sorry
+
 
 set_option linter.unusedSimpArgs false in
 set_option linter.unreachableTactic false in
@@ -176,4 +181,9 @@ example :
 end
 
 
+
+example (y : ℕ ) : ∃ x, x + y + 1 = 2 + y := by
+  test_some
+
 #check MvPolynomial.X
+#check [0,0].get
