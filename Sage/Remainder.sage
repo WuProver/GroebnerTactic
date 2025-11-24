@@ -86,38 +86,6 @@ def s_polynomial(f, g):
     s_poly = (L / LM_f) * f * LC_g  - (L / LM_g) * g * LC_f
     return s_poly
     
-# def convert_quotient_to_json(quotients, vars_list):
-#     json_quotients = []
-#     num_vars = len(vars_list)
-
-#     for q_poly in quotients:
-#         if q_poly.is_zero():
-#             json_quotients.append({
-#                 "coeffs": [int(0)],
-#                 "power": [[int(0)] * num_vars]
-#             })
-#         else:
-#             coefficients = []
-#             exponents = []
-
-#             for exp_tuple, coeff in q_poly.dict().items():
-#                 coefficients.append(int(coeff))
-                
-#                 # 转换指数为 Python 原生整数
-#                 exp_list = [int(exp) for exp in exp_tuple]
-                
-#                 # 填充到正确长度
-#                 while len(exp_list) < num_vars:
-#                     exp_list.append(0)
-                    
-#                 exponents.append(exp_list)
-
-#             json_quotients.append({
-#                 "coeffs": coefficients,
-#                 "power": exponents
-#             })
-
-#     return json_quotients
 
 def convert_quotient_to_json(quotients, vars_list):
     json_quotients = []
@@ -214,8 +182,6 @@ if __name__ == "__main__":
         json_output = convert_quotient_to_json(quotients, vars_list)
         # print(f"{json_output}")
         print(json.dumps(json_output))
-
-
 
     except Exception as e:
         print(f"\n[!!! Error !!!] : {e}")
