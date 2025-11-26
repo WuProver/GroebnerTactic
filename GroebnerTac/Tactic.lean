@@ -189,6 +189,7 @@ def runsageAux_ideal (path I_generator J_generator : String) : IO (String) := do
   let stdout ← child.stdout.readToEnd
   let stderr ← child.stderr.readToEnd
   let exitCode ← child.wait
+  IO.println stderr
 
   return stdout
 
@@ -221,6 +222,8 @@ def runsage_ideal (I J: String) : IO (String) := do
     throw <| IO.userError "could not find sage script Greobner.sage"
 
 #eval runsage "(((X_0^2 + X_1^3) + X_2^4) + X_3^5)" "[X_0, X_1]"
+
+#eval runsage_ideal "[(X_0 + X_1^2), X_1^2]" "[X_0, X_1^2]"
 
 def stringToJson (s : String) : Except String Json :=
   Json.parse s
@@ -879,21 +882,20 @@ elab "ideal" : tactic => do
         let I_gens_list ←  parseGenerator I_gens
         let J_gens_list ←  parseGenerator J_gens
         logInfo m!"Parsed Ideal I generators: {I_gens_list}"
-        
+        logInfo m!"Parsed Ideal J generators {J_gens_list}"
+        let sage_result ← runsage_ideal s!"{I_gens_list}" s!"{J_gens_list}"
+
+        logInfo m!"[DEBUG] sage_result: {sage_result}"
+        -- let result := Json.parse s!"{sage_result}"
+        -- -- logInfo m!"[DEBUG] sage_json_result: {result}"
+        -- let sage_json_result ← parseJson result
+        -- -- logInfo m!"[DEBUG] sage_json_result after parsing: {sage_json_result}"
+        -- let Except.ok arr := sage_json_result.getArr? | failure
+
       | _ =>
         dbg_trace "The left side is not an Ideal.span"
 
-      let sage_result ← runsage_ideal s!"{I_gens_list}" s!"{J_gens_list}"
-
-      -- logInfo m!"[DEBUG] sage_result: {sage_result}"
-
-
-      let result := Json.parse s!"{sage_result}"
-      -- logInfo m!"[DEBUG] sage_json_result: {result}"
-      let sage_json_result ← parseJson result
-      -- logInfo m!"[DEBUG] sage_json_result after parsing: {sage_json_result}"
-      let Except.ok arr := sage_json_result.getArr? | failure
-
+      
     | _ =>
       logError "Error: Goal is not an equality (Eq.eq) structure."
 
