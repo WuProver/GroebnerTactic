@@ -285,6 +285,21 @@ def parseCoeff (a : Json) : TacticM Term := do
   -- logInfo m!"[CHECK {xs_get}]"
   pure xs_get
 
+def parseCoeff' (a : Json) : TacticM Term := do
+  -- let b ←  match a.getArr? with
+  --   | Except.ok arr => pure arr
+  --   | Except error e => throwError "Json fail"
+  let Except.ok b:= a.getArr? | failure
+  let process_a:= b.mapM processElement
+  let resultArray ←  process_a
+  let xs := resultArray.toList
+  let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
+  let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
+  let xs <- Lean.PrettyPrinter.delab xs
+  -- logInfo m!"[CHECK {xs_get}]"
+  pure xs
+
+
 elab "remainder" : tactic => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
@@ -305,14 +320,17 @@ elab "remainder" : tactic => do
             let a  ← parsePoly a
             let b  ← parsePoly b
             pure s!"({a} + {b})"
-          -- | ~q($a - $b) =>
-          --   let a  ← parsePoly a
-          --   let b  ← parsePoly b
-          --   pure s!"({a} - {b})"
+
+          | ~q(@HSub.hSub (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
+            let a ← parsePoly a
+            let b ← parsePoly b
+            pure s!"({a} - {b})"
+
           | ~q($a * $b) =>
             let left ← parsePoly a
             let right ← parsePoly b
             pure s!"({left} * {right})"
+
           | ~q($a ^ ($n : ℕ)) =>
             let baseStr ← parsePoly a
 
@@ -333,8 +351,8 @@ elab "remainder" : tactic => do
               match var with
               | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
               | _ => pure s!"X_{idx}"
-          | ~q(@OfNat.ofNat _ _ $n) =>
-            pure s!"{n}"
+          | ~q(@OfNat.ofNat _ $b $n) =>
+            pure s!"{b}"
           | ~q(@Zero.toOfNat0 _ $z) =>
             -- logInfo m!"[DEBUG] Found zero constant{z}"
             -- dbg_trace s!"[DEBUG] Found zero constant {z}"
@@ -473,10 +491,20 @@ elab "remainder'" : tactic => do
             let b  ← parsePoly b
             pure s!"({a} + {b})"
 
+          | ~q(@Sub.sub (MvPolynomial «$σ» «$R») $commring $a $b) => do
+            let a ← parsePoly a
+            let b ← parsePoly b
+            pure s!"({a} - {b})"
+
+          | ~q(@HSub.hSub (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
+            let a ← parsePoly a
+            let b ← parsePoly b
+            pure s!"({a} - {b})"
+
           | ~q($a * $b) =>
             let left ← parsePoly a
             let right ← parsePoly b
-            pure s!"({left} + {right})"
+            pure s!"({left} * {right})"
 
           | ~q($a ^ ($n : ℕ)) =>
             let baseStr ← parsePoly a
@@ -486,26 +514,25 @@ elab "remainder'" : tactic => do
               pure n.natLit!
             catch _ =>
               pure n.natLit!
-            -- dbg_trace "FOUND POW: {baseStr}^{n}"
             pure s!"{baseStr}^{n}"
-            -- dbg_trace "FOUND POW: {baseStr}^{n}"
+
           | ~q(MvPolynomial.X $idx) =>
             match idx with
-            -- | ~q(@OfNat.ofNat _ _ $n) => pure s!"X_{n}"
-            -- | ~q(@OfNat.ofNat _ _ $n) => dbg_trace "FOUND VAR INDEX {n}"; pure s!"X_{n}"
-            -- | _ => pure s!"X_{idx}"
             | ~q(@OfNat.ofNat _ _ $var) =>
               match var with
               | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
               | _ => pure s!"X_{idx}"
-          | ~q(@OfNat.ofNat _ _ $n) =>
-            pure s!"{n}"
+
+          | ~q(@OfNat.ofNat _ $b $n) =>
+            pure s!"{b}"
+
           | ~q(@Zero.toOfNat0 _ $z) =>
             logInfo m!"[DEBUG] Found zero constant{z}"
             dbg_trace s!"[DEBUG] Found zero constant {z}"
             pure "0"
           | _ =>
             pure s!"{e}"
+
       let rec parseVars (e : Q(Set (MvPolynomial $σ $R))) : Lean.MetaM (List String) := do
         -- let e ← checkTypeQ e q(Set (MvPolynomial $σ $R))
         match e with
@@ -537,15 +564,15 @@ elab "remainder'" : tactic => do
       let varsList ← parseVars vars
       let parsedR ← parsePoly r
 
-      -- logInfo m!"parsed vars: {varsList}"
-      -- logInfo m!"parsed polynomial: {parsedPoly}"
+      logInfo m!"parsed vars: {varsList}"
+      logInfo m!"parsed polynomial: {parsedPoly}"
       -- dbg_trace "parsed vars: {varsList}"
       -- dbg_trace "parsed polynomial: {parsedPoly}"
       -- dbg_trace "parsed remainder: {parsedR}"
 
       let sage_result ← runsage parsedPoly s!"{varsList}"
 
-      -- logInfo m!"[DEBUG] sage_result: {sage_result}"
+      logInfo m!"[DEBUG] check sage_result 11_26: {sage_result}"
 
 
       let result := Json.parse s!"{sage_result}"
@@ -650,15 +677,8 @@ elab "basis" : tactic  => do
             -- let left ← parsePoly a
             let a  ← parsePoly a
             let b  ← parsePoly b
-            -- logInfo m!"[DEBUG]check {a}"
-            -- logInfo m!"[DEBUG]check {b}"
-            -- dbg_trace "[DEBUG] check {a}"
+
             pure s!"({a} + {b})"
-            -- logInfo m!"FIND ADD LEFT: {left}"
-            -- let right ← parsePoly b
-            -- logInfo m!"FIND ADD RIGHT: {right}"
-            -- dbg_trace "FIND ADD: {left} and {right}"
-            -- pure s!"({left} + {right})"
 
           | ~q($a * $b) =>
             let left ← parsePoly a
@@ -666,16 +686,10 @@ elab "basis" : tactic  => do
             -- dbg_trace "FIND MUL: {left} and {right}"
             pure s!"({left} + {right})"
 
-          -- | ~q(HPow.hPow $base $exp) =>
-          --   let baseStr ← parsePoly base
-          --   -- match base with
-          --   -- | ~q(MvPolynomial.X $idx) =>
-          --   dbg_trace "baseStr: {baseStr}"
-          --   match exp with
-          --   | ~q(@OfNat.ofNat _ _ $n) =>
-          --     dbg_trace "FOUND EXPONENT {n}"
-          --     pure s!"{baseStr}^{n}"
-          --   | _ => pure s!"{baseStr}^{exp}"
+          | ~q(@HSub.hSub (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
+            let a ← parsePoly a
+            let b ← parsePoly b
+            pure s!"({a} - {b})"
 
           | ~q($a ^ ($n : ℕ)) =>
             let baseStr ← parsePoly a
@@ -698,8 +712,8 @@ elab "basis" : tactic  => do
               match var with
               | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
               | _ => pure s!"X_{idx}"
-          | ~q(@OfNat.ofNat _ _ $n) =>
-            pure s!"{n}"
+          | ~q(@OfNat.ofNat _ $b $n) =>
+            pure s!"{b}"
           | ~q(@Zero.toOfNat0 _ $z) =>
             -- logInfo m!"[DEBUG] Found zero constant{z}"
             -- dbg_trace s!"[DEBUG] Found zero constant {z}"
@@ -752,7 +766,6 @@ elab "basis" : tactic  => do
         split_ands
       ))
       for i in parsedTermsArray do
-        logInfo m!"[DEBUG] term to use: {i}"
         evalTactic (← `(tactic|
         focus
           use $i:term
@@ -825,6 +838,11 @@ elab "ideal" : tactic => do
             let b  ← parsePoly b
             pure s!"({a} + {b})"
 
+          | ~q(@HSub.hSub (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
+            let a ← parsePoly a
+            let b ← parsePoly b
+            pure s!"({a} - {b})"
+
           | ~q($a * $b) =>
             let left ← parsePoly a
             let right ← parsePoly b
@@ -851,8 +869,9 @@ elab "ideal" : tactic => do
               match var with
               | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
               | _ => pure s!"X_{idx}"
-          | ~q(@OfNat.ofNat _ _ $n) =>
-            pure s!"{n}"
+          | ~q(@OfNat.ofNat _ $b $n) =>
+            logInfo s!"[debug]: go to this branch"
+            pure s!"{b}"
           | ~q(@Zero.toOfNat0 _ $z) =>
             -- logInfo m!"[DEBUG] Found zero constant{z}"
             -- dbg_trace s!"[DEBUG] Found zero constant {z}"
@@ -865,14 +884,10 @@ elab "ideal" : tactic => do
         | ~q(Insert.insert (self := $_inst) $a $b) =>
           let VarA ← parsePoly a
           let VarB ← parseGenerator b
-          -- dbg_trace "See If enter this Branch"
-          -- logInfo m!"[DEBUG] Insert basis element: {a}"
-          -- logInfo m!"[DEBUG] Remaining basis: {b}"
           pure (VarA :: VarB)
         | ~q((∅: Set (MvPolynomial _ _))) => pure []
         | ~q(singleton $v) =>
           let vStr ← parsePoly v
-          -- logInfo m!"[DEBUG] Singleton basis element: {vStr}"
           pure [vStr]
         | _ =>
           unreachable!
@@ -881,34 +896,116 @@ elab "ideal" : tactic => do
       | ~q(Ideal.span $I_gens), ~q(Ideal.span $J_gens) =>
         let I_gens_list ←  parseGenerator I_gens
         let J_gens_list ←  parseGenerator J_gens
-        logInfo m!"Parsed Ideal I generators: {I_gens_list}"
-        logInfo m!"Parsed Ideal J generators {J_gens_list}"
         let sage_result ← runsage_ideal s!"{I_gens_list}" s!"{J_gens_list}"
 
-        logInfo m!"[DEBUG] sage_result: {sage_result}"
-        -- let result := Json.parse s!"{sage_result}"
-        -- -- logInfo m!"[DEBUG] sage_json_result: {result}"
-        -- let sage_json_result ← parseJson result
-        -- -- logInfo m!"[DEBUG] sage_json_result after parsing: {sage_json_result}"
-        -- let Except.ok arr := sage_json_result.getArr? | failure
+        let result := Json.parse s!"{sage_result}"
+        let sage_json_result ← parseJson result
+
+        evalTactic (← `(tactic|{
+          apply le_antisymm
+          focus
+            rw [Ideal.span_le]
+            intro x hx
+            simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+            rcases hx with (rfl|rfl)
+            ·
+              apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
+              -- change _ ∈ (_ : Ideal _)
+              -- repeat
+              --   conv in _ ∈ Ideal.span (insert _ _) => {}
+              --   apply aux
+              -- apply Ideal.mul_mem_left
+              -- apply Ideal.mem_span_singleton_self
+        }))
+        -- evalTactic (← `(tactic|
+        --   focus
+        --     rw [Ideal.span_le]
+        --     intro x hx
+        --     simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+        --     rcases hx with (rfl|rfl)
+        --     focus
+        --       apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
+        --       change _ ∈ (_ : Ideal _)
+        --       repeat
+        --         conv in _ ∈ Ideal.span (insert _ _) => {}
+        --         apply aux
+        --       apply Ideal.mul_mem_left
+        --       apply Ideal.mem_span_singleton_self
+        -- ))
+        -- evalTactic (← `(tactic|
+        --     focus
+        --       apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
+        --       change _ ∈ (_ : Ideal _)
+        --       repeat
+        --         conv in _ ∈ Ideal.span (insert _ _) => {}
+        --         apply aux
+        --       apply Ideal.mul_mem_left
+        --       apply Ideal.mem_span_singleton_self
+        -- ))
+
+        --   let Except.ok poly_arr := sage_json_result.getArr? | failure
+        --   for j in poly_arr do
+        --     logInfo m! "[DEBUG] j : {j}"
+        --     let poly ← processElement j
+        --     let poly ← Lean.PrettyPrinter.delab poly
+
+
+
+
+
+
+          -- let parsedTermsArray ← poly_arr.mapM parseCoeff'
+          -- for j in parsedTermsArray do
+          --   logInfo m!"term to use' {j}"
+
 
       | _ =>
         dbg_trace "The left side is not an Ideal.span"
 
-      
+
     | _ =>
       logError "Error: Goal is not an equality (Eq.eq) structure."
 
 
--- elab "get_basis": tactic => do
---   let goal ← Lean.Elab.Tactic.getMainGoal
---   let t ← goal.getType
---   let t ← checkTypeQ t q(Prop)
+/-
+From Here is some code used to debug and need to be reshaped as soon as possible
+-/
+partial def parsePoly {u v: Lean.Level}{σ : Q(Type $u)}{R : Q(Type $v)}{r : Q(CommSemiring $R)} (e : Q(MvPolynomial $σ $R)) : MetaM String := do
+  match e with
+  | ~q($a + $b) =>
+    let a  ← parsePoly a
+    let b  ← parsePoly b
+    pure s!"({a} + {b})"
+  | ~q($a * $b) =>
+    let left ← parsePoly a
+    let right ← parsePoly b
+    pure s!"({left} * {right})"
+  | ~q($a ^ ($n : ℕ)) =>
+    let baseStr ← parsePoly a
+
+    let n ← try
+      let .isNat _ n _ ← NormNum.derive (α := q(ℕ)) n | failure
+      pure n.natLit!
+    catch _ =>
+      pure n.natLit!
+
+    pure s!"{baseStr}^{n}"
+
+  | ~q(MvPolynomial.X $idx) =>
+    match idx with
+    | ~q(@OfNat.ofNat _ _ $var) =>
+      match var with
+      | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
+      | _ => pure s!"X_{idx}"
+  | ~q(@OfNat.ofNat _ $b $n) =>
+    logInfo "go to this branch"
+    pure s!"{b}"
+  | _ =>
+    pure s!"{e}"
 
 
 
-
-
+#eval parsePoly q(1: MvPolynomial Nat Nat)
 
 
 end IsRemainder
@@ -920,15 +1017,6 @@ namespace Mathlib.Tactic.IsGroebner
 end IsGroebner
 
 end Tactic
-
-open MvPolynomial
-variable {σ : Type*} (m : MonomialOrder σ)
-
-example :
-  Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-  ideal
-  sorry
-
 
 
 

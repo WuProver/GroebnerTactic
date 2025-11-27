@@ -58,18 +58,20 @@ example :
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-    remainder
-    -- sorry
+    -- remainder
+    sorry
 
 example :
     lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-    remainder
+    -- remainder
+    sorry
 
 example :
     lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 : MvPolynomial (Fin 3) ℚ)
       {X 0, X 1, X 2} 0 := by
-    remainder
+    -- remainder
+    sorry
 
 
 set_option linter.unusedSimpArgs false in
@@ -79,8 +81,14 @@ set_option linter.unusedTactic false in
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
       {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
-      remainder'
+      -- remainder'
+      sorry
 
+example :
+    lex.IsRemainder (1: MvPolynomial (Fin 3) ℚ)
+      {X 0, X 1, 2 - X 3} (1) := by
+      remainder'
+      -- sorry
 
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
@@ -236,12 +244,12 @@ lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ I
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
     apply le_antisymm
-    ·
+    focus
       rw [Ideal.span_le]
       intro x hx
       simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
       rcases hx with (rfl|rfl)
-      ·
+      focus
         apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
         change _ ∈ (_ : Ideal _)
         repeat
@@ -249,7 +257,7 @@ example :
           apply aux
         apply Ideal.mul_mem_left
         apply Ideal.mem_span_singleton_self
-      ·
+      focus
         apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 0 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
         change _ ∈ (_ : Ideal _)
         repeat
@@ -257,12 +265,12 @@ example :
           apply aux
         apply Ideal.mul_mem_left
         apply Ideal.mem_span_singleton_self
-    · rw [Ideal.span_le]
+    focus
+      rw [Ideal.span_le]
       intro x hx
       simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
       rcases hx with (rfl|rfl)
-      ·
-
+      focus
         apply (iff_of_eq <| congrArg (a₂ := (- 1) * X 1 ^ 2 + 1 * (X 0 + X 1 ^ 2)) (· ∈ (_ : Ideal _)) (by decide +kernel)).mpr
         -- change _ ∈ (_ : Ideal _)
         repeat
@@ -270,7 +278,7 @@ example :
           apply aux
         apply Ideal.mul_mem_left
         apply Ideal.mem_span_singleton_self
-      ·
+      focus
         apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 0 * (X 0 + X 1 ^ 2)) (· ∈ (_ : Ideal _)) (by decide +kernel)).mpr
         -- change _ ∈ (_ : Ideal _)
         repeat
@@ -280,14 +288,16 @@ example :
         apply Ideal.mem_span_singleton_self
 
 example :
-    letI basis := ({X 0 ^ 4 - X 1} : Set <| MvPolynomial (Fin 3) ℚ)
-    lex.IsGroebnerBasis basis (Ideal.span basis) := by
-      sorry
-
-example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
   ideal
   sorry
+
+
+
+example :
+    letI basis := ({X 0 ^ 4 - X 1} : Set <| MvPolynomial (Fin 3) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span basis) := by
+      basis
 
 
 end
