@@ -197,6 +197,8 @@ if __name__ == "__main__":
             
             s_poly = s_polynomial(f_i, f_j)
             quotients, remainder = polynomial_division_multivariate(s_poly, set_list, ring)
+            # print(f"[QUOTIENTS]\n {quotients}")
+            # print(f"[REMAINDER]\n {quotients}")
             json_output = convert_quotient_to_json(quotients, vars_list)
 
             results.append(json_output)

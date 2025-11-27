@@ -115,8 +115,6 @@ end Poly
       "[{\"c\" : [1, 2], \"e\": [[0, 2], [2, 3]]}, {\"c\" : [3, 5], \"e\": [[4, 1]]}]")
 
 
-
-#print Poly.instFromJsonMon.fromJson
 #eval do
   Lean.fromJson? (α := Poly.Polynomial)
     (← Lean.Json.parse
@@ -684,7 +682,7 @@ elab "basis" : tactic  => do
             let left ← parsePoly a
             let right ← parsePoly b
             -- dbg_trace "FIND MUL: {left} and {right}"
-            pure s!"({left} + {right})"
+            pure s!"({left} * {right})"
 
           | ~q(@HSub.hSub (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
             let a ← parsePoly a
@@ -740,7 +738,7 @@ elab "basis" : tactic  => do
 
       let basislist <- parseBasis basis
       -- dbg_trace "parsed basis: {basislist}"
-      -- logInfo m!"parsed basis: {basislist}"
+      logInfo m!"parsed basis: {basislist}"
       let sage_result ← runsage' s!"{basislist}"
       let result := Json.parse s!"{sage_result}"
       let sage_json_result ← parseJson result
@@ -766,6 +764,7 @@ elab "basis" : tactic  => do
         split_ands
       ))
       for i in parsedTermsArray do
+        logInfo m!"[DEBUG Basis] check {i}"
         evalTactic (← `(tactic|
         focus
           use $i:term
@@ -814,6 +813,22 @@ where
       xs := xs.push $ Hypothesis.mk s!"{decl.userName}" s!"{<- Meta.ppExpr decl.type}"
     return xs
 
+
+open MvPolynomial
+variable {σ : Type*} (m : MonomialOrder σ)
+variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
+
+lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ Ideal.span G) : r + f * g ∈ Ideal.span (insert g G) := by
+  have h₁ : f * g ∈ Ideal.span (insert g G) := by
+    rw [Ideal.span_insert]
+    refine Submodule.mem_sup_left (show f * g ∈ Ideal.span {g} from ?_)
+    apply Ideal.mul_mem_left
+    exact Ideal.mem_span_singleton_self g
+  have h₂ : r ∈ Ideal.span (insert g G) := by
+    rw [Ideal.span_insert]
+    exact Submodule.mem_sup_right h
+  exact (Submodule.add_mem_iff_right (Ideal.span (insert g G)) h₂).mpr h₁
+
 elab "ideal" : tactic => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let goalType ← goal.getType
@@ -846,7 +861,7 @@ elab "ideal" : tactic => do
           | ~q($a * $b) =>
             let left ← parsePoly a
             let right ← parsePoly b
-            pure s!"({left} + {right})"
+            pure s!"({left} * {right})"
 
           | ~q($a ^ ($n : ℕ)) =>
             let baseStr ← parsePoly a
@@ -900,63 +915,34 @@ elab "ideal" : tactic => do
 
         let result := Json.parse s!"{sage_result}"
         let sage_json_result ← parseJson result
-
-        evalTactic (← `(tactic|{
+        let Except.ok poly_arr := sage_json_result.getArr? | failure
+        evalTactic (← `(tactic|
           apply le_antisymm
+        ))
+        for poly_json in poly_arr do
+          evalTactic (← `(tactic|
           focus
             rw [Ideal.span_le]
             intro x hx
             simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
-            rcases hx with (rfl|rfl)
-            ·
-              apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
-              -- change _ ∈ (_ : Ideal _)
-              -- repeat
-              --   conv in _ ∈ Ideal.span (insert _ _) => {}
-              --   apply aux
-              -- apply Ideal.mul_mem_left
-              -- apply Ideal.mem_span_singleton_self
-        }))
-        -- evalTactic (← `(tactic|
-        --   focus
-        --     rw [Ideal.span_le]
-        --     intro x hx
-        --     simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
-        --     rcases hx with (rfl|rfl)
-        --     focus
-        --       apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
-        --       change _ ∈ (_ : Ideal _)
-        --       repeat
-        --         conv in _ ∈ Ideal.span (insert _ _) => {}
-        --         apply aux
-        --       apply Ideal.mul_mem_left
-        --       apply Ideal.mem_span_singleton_self
-        -- ))
-        -- evalTactic (← `(tactic|
-        --     focus
-        --       apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
-        --       change _ ∈ (_ : Ideal _)
-        --       repeat
-        --         conv in _ ∈ Ideal.span (insert _ _) => {}
-        --         apply aux
-        --       apply Ideal.mul_mem_left
-        --       apply Ideal.mem_span_singleton_self
-        -- ))
+            rcases hx with (hx|hx) <;> rw [hx]
+            ))
+          let Except.ok poly_arr' := poly_json.getArr? | failure
+          for poly in poly_arr' do
 
-        --   let Except.ok poly_arr := sage_json_result.getArr? | failure
-        --   for j in poly_arr do
-        --     logInfo m! "[DEBUG] j : {j}"
-        --     let poly ← processElement j
-        --     let poly ← Lean.PrettyPrinter.delab poly
-
-
-
-
-
-
-          -- let parsedTermsArray ← poly_arr.mapM parseCoeff'
-          -- for j in parsedTermsArray do
-          --   logInfo m!"term to use' {j}"
+            let poly ← processElement poly
+            let poly ← Lean.PrettyPrinter.delab poly
+            logInfo m! "[DEBUG] poly to use : {poly}"
+            evalTactic (← `(tactic|
+              focus
+                apply (iff_of_eq <| congrArg (a₂ := $poly:term ) (· ∈ _) (by decide +kernel)).mpr
+                change _ ∈ (_ : Ideal _)
+                repeat
+                  conv in _ ∈ Ideal.span (insert _ _) => {}
+                  apply aux
+                apply Ideal.mul_mem_left
+                apply Ideal.mem_span_singleton_self
+              ))
 
 
       | _ =>
@@ -1002,6 +988,67 @@ partial def parsePoly {u v: Lean.Level}{σ : Q(Type $u)}{R : Q(Type $v)}{r : Q(C
     pure s!"{b}"
   | _ =>
     pure s!"{e}"
+
+
+
+elab "debug" : tactic => do
+  evalTactic (← `(tactic|
+  apply le_antisymm
+  ))
+  evalTactic (← `(tactic|
+  focus
+    rw [Ideal.span_le]
+    intro x hx
+    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+    rcases hx with (hx|hx) <;> rw [hx]
+    ))
+  evalTactic (← `(tactic|
+    focus
+      apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
+      change _ ∈ (_ : Ideal _)
+      repeat
+        conv in _ ∈ Ideal.span (insert _ _) => {}
+        apply aux
+      apply Ideal.mul_mem_left
+      apply Ideal.mem_span_singleton_self
+    ))
+  evalTactic (← `(tactic|
+    focus
+      apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 0 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
+      change _ ∈ (_ : Ideal _)
+      repeat
+        conv in _ ∈ Ideal.span (insert _ _) => {}
+        apply aux
+      apply Ideal.mul_mem_left
+      apply Ideal.mem_span_singleton_self
+    ))
+  evalTactic (← `(tactic|
+  focus
+    rw [Ideal.span_le]
+    intro x hx
+    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+    rcases hx with (hx|hx) <;> rw [hx]
+    ))
+  evalTactic (← `(tactic|
+    focus
+      apply (iff_of_eq <| congrArg (a₂ := (- 1) * X 1 ^ 2 + 1 * (X 0 + X 1 ^ 2)) (· ∈ (_ : Ideal _)) (by decide +kernel)).mpr
+      -- change _ ∈ (_ : Ideal _)
+      repeat
+        conv in _ ∈ Ideal.span (insert _ _) => {}
+        apply aux
+      apply Ideal.mul_mem_left
+      apply Ideal.mem_span_singleton_self
+    ))
+  evalTactic (← `(tactic|
+    focus
+      apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 0 * (X 0 + X 1 ^ 2)) (· ∈ (_ : Ideal _)) (by decide +kernel)).mpr
+      -- change _ ∈ (_ : Ideal _)
+      repeat
+        conv in _ ∈ Ideal.span (insert _ _) => {}
+        apply aux
+      apply Ideal.mul_mem_left
+      apply Ideal.mem_span_singleton_self
+    ))
 
 
 

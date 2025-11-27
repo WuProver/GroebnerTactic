@@ -137,7 +137,7 @@ example :
     simp
   have h₂: ((1 - X 3): MvPolynomial (Fin 3) ℚ) ∣ (1 - X 3^n) := by
     exact one_sub_dvd_one_sub_pow (X 3) n
-  have h₃: 1 ∈ Ideal.span ({X 0, X 1, 1-X 3} : Set (MvPolynomial (Fin 3) ℚ)) := by
+  have h₃: 1 ∈ Ideal.span ({X 0, X 1, 1-X 0*X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
     rcases h₂ with ⟨p, hp⟩
     rw [hp] at h₁
     have l₁ : X 3 ^ n ∈ Ideal.span ({X 0, X 1, 1-X 3} : Set (MvPolynomial (Fin 3) ℚ)) := by
@@ -151,13 +151,14 @@ example :
     sorry
   have h₄ : lex.IsRemainder (1: MvPolynomial (Fin 3) ℚ)
     {X 0, X 1, 1 - X 3} (1) := by
-    sorry
-  have h₅ : letI basis := ({X 0, X 1 ,1- X 0 * X 1} : Set <| MvPolynomial (Fin 3) ℚ)
+    remainder'
+  have h₅ : letI basis := ({X 0, X 1 ,1 - X 0 * X 1} : Set <| MvPolynomial (Fin 3) ℚ)
   lex.IsGroebnerBasis basis (Ideal.span basis) := by
     sorry
-  have h₆ : 
+  have h₆ :  lex.IsRemainder (1: MvPolynomial (Fin 3) ℚ)
+    {X 0, X 1, 1 - X 3} 0 := by
+    apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h₅).mpr h₃
 
-  sorry
 
 /-Intersection of Ideals-/
 example :
