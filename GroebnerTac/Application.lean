@@ -132,7 +132,21 @@ example :
         exact Ideal.mem_span_singleton_self (1 - X 3)
       exact t₁ t₂
     rw [h₁]
-    sorry
+    apply Ideal.add_mem _ l₁ l₂
+    rw [← h₁]
+    refine ⟨Ideal.span {X 0, X 1, 1 - X 3}, ?_⟩
+    ext x
+    constructor
+    · intro h
+      simp at h
+      have l: ({X 0, X 1, 1 - X 0} : Set (MvPolynomial (Fin 3) ℚ)) ⊆ (Ideal.span ({X 0, X 1, 1 - X 0} : Set (MvPolynomial (Fin 3) ℚ))) := by
+        exact Ideal.subset_span
+      exact h l
+    · intro h
+      simp
+      intro a
+      simp at h
+      exact h
   sorry
 
 
