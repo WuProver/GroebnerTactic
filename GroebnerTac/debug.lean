@@ -35,6 +35,7 @@ example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
     ideal
 
+
     sorry
 
 
@@ -53,9 +54,9 @@ example :
         repeat
           conv in _ ∈ Ideal.span (insert _ _) => {}
           apply aux
-  
         apply Ideal.mul_mem_left
         apply Ideal.mem_span_singleton_self
+        
         sorry
       focus
         apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 0 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
