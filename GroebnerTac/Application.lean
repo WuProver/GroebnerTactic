@@ -51,7 +51,7 @@ example (f : MvPolynomial (Fin 2) ℚ):
       {X 0 , X 1^2} 0 := by
       remainder
     have h₄: Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
-      sorry
+      ideal
     have h₅ : letI basis := ({X 0, X 1 ^ 2} : Set <| MvPolynomial (Fin 2) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) ) := by
       rw [h₄]
@@ -70,7 +70,7 @@ example:
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
     have l₁ : Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-      sorry
+      ideal
     have l₂ : letI basis := ({X 0, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) ) := by
       rw [l₁]
@@ -208,6 +208,9 @@ example :
       ≠
       Ideal.span {X 0 ^ 4 - X 1} := by
     have h₁ : letI basis := ({X 0 ^ 4 - X 1} : Set <| MvPolynomial (Fin 2) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span basis) := by
+      basis
+    have h₂ : letI basis := ({X 0^3 - X 0^2*X 1^2 - X 0*X 1 + X 1^3} : Set <| MvPolynomial (Fin 2) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
     

@@ -195,7 +195,7 @@ if __name__ == "__main__":
         result.append(json_result_1)
         result.append(json_result_2)
 
-        print(result)
+        print(json.dumps(result))
 
         # result = []
 
