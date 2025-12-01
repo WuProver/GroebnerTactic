@@ -93,8 +93,8 @@ def s_polynomial(f, g):
     S_f = L_monomial // LM_f 
     S_g = L_monomial // LM_g
     
-    term1 = (S_f / LC_f) * f
-    term2 = (S_g / LC_g) * g
+    term1 = (S_f * LC_g) * f
+    term2 = (S_g * LC_f) * g
     
     s_poly = term1 - term2
     

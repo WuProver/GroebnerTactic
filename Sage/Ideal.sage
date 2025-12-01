@@ -52,15 +52,16 @@ def find_linear_representation(poly_list_to_represent, ideal_basis, ideal_name, 
             is_contained = poly.reduce(B).is_zero()
 
             coeffs = poly.lift(I_basis)
+            results.append(coeffs)
 
-            representation_terms = []
-            for coeff, basis_poly in zip(coeffs, ideal_basis):
-                if not coeff.is_zero():
-                    representation_terms.append(f"({str(coeff)}) * ({str(basis_poly)})")
+            # representation_terms = []
+            # for coeff, basis_poly in zip(coeffs, ideal_basis):
+            #     if not coeff.is_zero():
+            #         representation_terms.append(f"({str(coeff)}) * ({str(basis_poly)})")
             
-            representation = " + ".join(representation_terms)
+            # representation = " + ".join(representation_terms)
 
-            results.append (representation if representation else 0)
+            # results.append (representation if representation else 0)
 
         except Exception as e:
 
@@ -68,24 +69,6 @@ def find_linear_representation(poly_list_to_represent, ideal_basis, ideal_name, 
             import traceback
             traceback.print_exc()
 
-        #     results.append({
-        #         "source_poly": str(poly),
-        #         "ideal_name": ideal_name,
-        #         "basis_name": basis_name,
-        #         "representation": representation if representation else "0",
-        #         "is_contained": str(is_contained)
-        #     })
-
-        # except Exception as e:
-      
-        #     results.append({
-        #         "source_poly": str(poly),
-        #         "ideal_name": ideal_name,
-        #         "basis_name": basis_name,
-        #         "representation": f"Error computing representation: {e}",
-        #         "is_contained": "False" 
-        #     })
-            
     return results
 
 def convert_polys_to_json(polys, vars_list):
@@ -96,7 +79,6 @@ def convert_polys_to_json(polys, vars_list):
 
     for q_poly in polys:
         if isinstance(q_poly, str):
-            # 这里需要ring对象，你可能需要修改函数签名或从其他地方获取
             q_poly = ring(q_poly)
         else:
             q_poly = q_poly
@@ -190,17 +172,33 @@ if __name__ == "__main__":
         results_G1_in_J = find_linear_representation(G1, G2, "G1", "G2")
         results_G2_in_I = find_linear_representation(G2, G1, "G2", "G1")
 
-        # for r in results_G1_in_J:
-        #     print(f"  {r['source_poly']} ∈ <G2> ? {r['is_contained']}")
-        #     print(f"    {r['source_poly']} = {r['representation']}")
+        # print(f"results_G1_in_J : {results_G1_in_J}\n\n")
+        # print(f"results_G2_in_I : {results_G2_in_I}\n\n")
+        
+        json_result_1 = []
+        for coeffs_list in results_G1_in_J:
+            json_result_1.append(convert_polys_to_json(coeffs_list, vars_list))
+        
+        json_result_2 = []
+        for coeffs_list in results_G2_in_I:
+            json_result_2.append(convert_polys_to_json(coeffs_list, vars_list))
+
         result = []
-        # print(results_G1_in_J)
-        json_G1_in_J = convert_polys_to_json(results_G1_in_J, vars_list)
-        result.append(json_G1_in_J)
-        # print(results_G2_in_I)
-        json_G2_in_I = convert_polys_to_json(results_G2_in_I, vars_list)
-        result.append(json_G2_in_I)
-        print(json.dumps(result))
+        # print(f"json_result_1 : {json_result_1}\n\n")
+        # print(f"json_result_2 : {json_result_2}\n\n")
+        result.append(json_result_1)
+        result.append(json_result_2)
+
+        print(result)
+
+        # result = []
+
+        # json_G1_in_J = convert_polys_to_json(results_G1_in_J, vars_list)
+        # result.append(json_G1_in_J)
+
+        # json_G2_in_I = convert_polys_to_json(results_G2_in_I, vars_list)
+        # result.append(json_G2_in_I)
+        # print(json.dumps(result))
 
         
     except Exception as e:

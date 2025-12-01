@@ -8,6 +8,7 @@ import MonomialOrderedPolynomial.MvPolynomial
 import MonomialOrderedPolynomial.Polynomial
 
 import GroebnerTac.Tactic
+import GroebnerTac.Ideal
 
 
 /-!
@@ -289,8 +290,32 @@ example :
 
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-  ideal
-  sorry
+  apply le_antisymm
+  · rw [Ideal.span_le]
+    intro x hx
+    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+    rcases hx with (rfl|rfl)
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [1, 1]
+      decide +kernel
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [0, 1]
+      decide +kernel
+  · rw [Ideal.span_le]
+    intro x hx
+    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+    rcases hx with (rfl|rfl)
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [1, -1]
+      ring
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [0, 1]
+      decide +kernel
+
 
 
 
