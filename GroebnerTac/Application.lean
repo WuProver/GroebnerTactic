@@ -10,9 +10,9 @@ import MonomialOrderedPolynomial.MvPolynomial
 import MonomialOrderedPolynomial.Polynomial
 
 import GroebnerTac.Tactic
-
+import GroebnerTac.Ideal
 section
-open MvPolynomial MonomialOrder
+open MvPolynomial MonomialOrder Ideal
 
 set_option linter.unusedSimpArgs false in
 set_option linter.unreachableTactic false in
@@ -58,6 +58,10 @@ example (f : MvPolynomial (Fin 2) ℚ):
       norm_cast at h₁
     apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h₅).mp h₂
 
+example (f : MvPolynomial (Fin 2) ℚ):
+  X 0 ∈ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
+  submodule_span [1, -1]
+  decide +kernel
 
 
 #check existsUnique_isRemainder_of_isGroebnerBasis₀
@@ -155,6 +159,8 @@ example :
 
 
 
+
+
 /-Intersection of Ideals-/
 example :
     (Ideal.span ({X 0 ^ 3* X 1} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
@@ -202,19 +208,47 @@ example :
     sorry
 
 example :
-  (Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
+  (Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 3) ℚ)) : Ideal (MvPolynomial (Fin 3) ℚ))
       ⊓
-      Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 2) ℚ))
+      Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 3) ℚ))
       ≠
       Ideal.span {X 0 ^ 4 - X 1} := by
-    have h₁ : letI basis := ({X 0 ^ 4 - X 1} : Set <| MvPolynomial (Fin 2) ℚ)
+    have h₁ : letI basis := ({X 0 ^ 4 - X 1} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
     have h₂ : letI basis := ({X 0^3 - X 0^2*X 1^2 - X 0*X 1 + X 1^3} : Set <| MvPolynomial (Fin 2) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
-    
-    sorry
+    have h₃ : Ideal.span ({X 2 * (X 0 ^ 2 - X 1), (1 - X 2)*(X 1 ^ 2 - X 0)} : Set <| MvPolynomial (Fin 3) ℚ) = Ideal.span ({X 0^3 - X 0^2*X 1^2 - X 0*X 1 + X 1^3, X 0 ^2 * X 2 - X 1 * X 2, X 1^2 * X 2 - X 0 * X 2 - X 1 ^2 + X 0} : Set <| MvPolynomial (Fin 3) ℚ) := by
+      ideal
+    have h₄ : Ideal.span ({X 0^3 - X 0^2*X 1^2 - X 0*X 1 + X 1^3, X 0 ^2 * X 2 - X 1 * X 2, X 1^2 * X 2 - X 0 * X 2 - X 1 ^2 + X 0} : Set <| MvPolynomial (Fin 3) ℚ) ⊓ Ideal.span ({X 0, X 1}: Set <| MvPolynomial (Fin 3) ℚ) = Ideal.span ({X 0^3 - X 0^2*X 1^2 - X 0*X 1 + X 1^3} : Set <| MvPolynomial (Fin 3) ℚ) := by
+      apply le_antisymm
+      ·
+
+        sorry
+      ·
+        sorry
+    rw [←h₃] at h₄
+    have h₅:  Ideal.span {X 2 * (X 0 ^ 2 - X 1), (1 - X 2) * (X 1 ^ 2 - X 0)} ⊓ Ideal.span {X 0, X 1} = (Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 3) ℚ)) : Ideal (MvPolynomial (Fin 3) ℚ))
+      ⊓
+      Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 3) ℚ)) := by
+
+       sorry
+    rw [← h₅]
+    rw [h₄]
+    have h₆ : (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 : (MvPolynomial (Fin 3) ℚ)) ∉  Ideal.span {X 0 ^ 4 - X 1} := by
+      by_contra l
+      have l₁ : lex.IsRemainder (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 : (MvPolynomial (Fin 3) ℚ)) {X 0 ^ 4 - X 1} (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 : (MvPolynomial (Fin 3) ℚ))  := by
+        remainder'
+      have l₂ : (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 : (MvPolynomial (Fin 3) ℚ)) = 0 := by
+        exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h₁ l₁).mpr l
+      have l₃ : (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 : (MvPolynomial (Fin 3) ℚ)) ≠ 0 := by
+        decide +kernel
+      exact l₃ l₂
+    have h₇ : (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 : (MvPolynomial (Fin 3) ℚ)) ∈   Ideal.span {X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 } := by
+      exact mem_span_singleton_self (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3)
+    exact ne_of_mem_of_not_mem' h₇ h₆
+
     -- have h₁: (Ideal.span ({X 3 *(X 0 ^ 2 - X 1), (1 - X 3)*(X 1^2 - X 0)} : Set (MvPolynomial (Fin 3) ℚ)) : Ideal (MvPolynomial (Fin 3) ℚ))
     --   ⊆ (Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 3) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))⊓
     --   Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 3) ℚ)) := by

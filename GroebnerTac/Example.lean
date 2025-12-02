@@ -59,14 +59,16 @@ example :
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-    -- remainder
-    sorry
+    remainder
+    -- sorry
 
-example :
+theorem aa:
     lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-    -- remainder
-    sorry
+    remainder
+
+#print axioms aa
+
 
 example :
     lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 : MvPolynomial (Fin 3) ℚ)
@@ -288,33 +290,36 @@ example :
         apply Ideal.mul_mem_left
         apply Ideal.mem_span_singleton_self
 
+
+
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-  apply le_antisymm
-  · rw [Ideal.span_le]
-    intro x hx
-    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
-    rcases hx with (rfl|rfl)
-    ·
-      change _ ∈ (_ : Ideal _)
-      submodule_span [1, 1]
-      decide +kernel
-    ·
-      change _ ∈ (_ : Ideal _)
-      submodule_span [0, 1]
-      decide +kernel
-  · rw [Ideal.span_le]
-    intro x hx
-    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
-    rcases hx with (rfl|rfl)
-    ·
-      change _ ∈ (_ : Ideal _)
-      submodule_span [1, -1]
-      ring
-    ·
-      change _ ∈ (_ : Ideal _)
-      submodule_span [0, 1]
-      decide +kernel
+  ideal
+  -- apply le_antisymm
+  -- · rw [Ideal.span_le]
+  --   intro x hx
+  --   simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+  --   rcases hx with (rfl|rfl)
+  --   ·
+  --     change _ ∈ (_ : Ideal _)
+  --     submodule_span [1, 1]
+  --     decide +kernel
+  --   ·
+  --     change _ ∈ (_ : Ideal _)
+  --     submodule_span [0, 1]
+  --     decide +kernel
+  -- · rw [Ideal.span_le]
+  --   intro x hx
+  --   simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+  --   rcases hx with (rfl|rfl)
+  --   ·
+  --     change _ ∈ (_ : Ideal _)
+  --     submodule_span [1, -1]
+  --     ring
+  --   ·
+  --     change _ ∈ (_ : Ideal _)
+  --     submodule_span [0, 1]
+  --     decide +kernel
 
 
 

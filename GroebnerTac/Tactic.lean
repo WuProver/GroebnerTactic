@@ -836,6 +836,17 @@ lemma aux_smul (R : Type*) {M : Type*}
     g • f ∈ Submodule.span R {f} :=
   Submodule.smul_mem _ _ (Submodule.mem_span_singleton_self _)
 
+variable {R : Type*} [CommRing R] {I : Ideal R} {a : R} {B : Set R}
+
+lemma Ideal.insert_le_of_mem_of_le:
+    a ∈ I → Ideal.span B ≤ I → Ideal.span (insert a B) ≤ I := by
+    intro ha hB
+    rw [Ideal.span_insert]
+    simp
+    constructor
+    · exact (Ideal.span_singleton_le_iff_mem I).mpr ha
+    · exact hB
+
 elab "submodule_span" "[" coeffs:term,* "]" : tactic => do
   let goal ← getMainTarget
   let some goal ← Qq.checkTypeQ goal q(Prop) | throwError "goal isn't a prop"
@@ -995,11 +1006,8 @@ elab "ideal" : tactic => do
         for poly_json in poly_arr do
           let Except.ok arr := poly_json.getArr? | failure
           evalTactic (← `(tactic|
-              focus
-                rw [Ideal.span_le]
-                intro x hx
-                simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
-                rcases hx with (hx|hx) <;> rw [hx]
+            focus
+              nth_rw 1 [Set.singleton_def]
               ))
           for poly in arr do
             let coeff_json := Json.parse s!"{poly}"
@@ -1012,12 +1020,18 @@ elab "ideal" : tactic => do
 
             logInfo m!"[DEBUG Ideal] poly to use : {termsArray}"
             evalTactic (← `(tactic|
-              focus
-                change _ ∈ (_ : Ideal _)
-                submodule_span [$termsArray:term,*]
-                decide +kernel
+              apply Ideal.insert_le_of_mem_of_le
               ))
-
+            evalTactic (← `(tactic|
+              focus
+                submodule_span [$termsArray:term,*]
+                with_unfolding_all decide
+                -- decide +kernel
+              ))
+          evalTactic (← `(tactic|
+            focus
+              simp only [Ideal.span_empty, Fin.isValue, bot_le]
+            ))
         -- for poly_json in poly_arr do
         --   evalTactic (← `(tactic|
         --   focus

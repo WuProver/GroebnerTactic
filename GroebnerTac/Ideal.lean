@@ -1,5 +1,11 @@
 import Mathlib
 
+import MonomialOrderedPolynomial.TreeRepr
+import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
+import MonomialOrderedPolynomial.Ordering
+import MonomialOrderedPolynomial.MvPolynomial
+import MonomialOrderedPolynomial.Polynomial
+
 namespace Tactic.Submodule
 
 open Qq Lean Elab Tactic Term
@@ -20,6 +26,17 @@ lemma aux_smul (R : Type*) {M : Type*}
     (g : R) (f : M):
     g • f ∈ Submodule.span R {f} :=
   Submodule.smul_mem _ _ (Submodule.mem_span_singleton_self _)
+
+variable {R : Type*} [CommRing R] {I : Ideal R} {a : R} {B : Set R}
+
+lemma Ideal.insert_le_of_mem_of_le:
+    a ∈ I → Ideal.span B ≤ I → Ideal.span (insert a B) ≤ I := by
+    intro ha hB
+    rw [Ideal.span_insert]
+    simp
+    constructor
+    · exact (Ideal.span_singleton_le_iff_mem I).mpr ha
+    · exact hB
 
 elab "submodule_span" "[" coeffs:term,* "]" : tactic => do
   let goal ← getMainTarget
@@ -98,3 +115,54 @@ open MvPolynomial MonomialOrder
 example :  X 0^2 ∈ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
   submodule_span [X 0, -X 0]
   ring
+
+example :
+  Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+  apply le_antisymm
+  · rw [Ideal.span_le]
+    intro x hx
+    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+    rcases hx with (rfl|rfl)
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [1, 1]
+      decide +kernel
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [0, 1]
+      decide +kernel
+  · rw [Ideal.span_le]
+    intro x hx
+    simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
+    rcases hx with (rfl|rfl)
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [1, -1]
+      ring
+    ·
+      change _ ∈ (_ : Ideal _)
+      submodule_span [0, 1]
+      decide +kernel
+
+example :
+  Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+  apply le_antisymm
+  ·
+    nth_rw 1 [Set.singleton_def]
+    apply Ideal.insert_le_of_mem_of_le
+    ·
+      submodule_span [1, 1]
+      decide +kernel
+    apply Ideal.insert_le_of_mem_of_le
+    · submodule_span [0, 1]
+      decide +kernel
+    · simp only [Ideal.span_empty, Fin.isValue, bot_le]
+  · nth_rw 1 [Set.singleton_def]
+    apply Ideal.insert_le_of_mem_of_le
+    ·
+      submodule_span [1, -1]
+      decide +kernel
+    apply Ideal.insert_le_of_mem_of_le
+    · submodule_span [0, 1]
+      decide +kernel
+    · simp only [Ideal.span_empty, Fin.isValue, bot_le]

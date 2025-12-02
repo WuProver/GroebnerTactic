@@ -110,7 +110,7 @@ def convert_polys_to_json(polys, vars_list):
                 exponent_pairs = []
                 for i, power in enumerate(exp_tuple):
                     if power != 0:
-                        exponent_pairs.append([i, int(power)])
+                        exponent_pairs.append([int(i-1), int(power)])
 
                 terms_list.append({
                     "c": [coeff_num, coeff_den],
@@ -181,6 +181,8 @@ if __name__ == "__main__":
         
         json_result_2 = []
         for coeffs_list in results_G2_in_I:
+            # print(f"[results_G2_in_I]: {coeffs_list}\n")
+            # print(f"[results_G2_in_I]: {convert_polys_to_json(coeffs_list, vars_list)}\n\n")
             json_result_2.append(convert_polys_to_json(coeffs_list, vars_list))
 
         result = []
