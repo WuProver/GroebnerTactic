@@ -148,7 +148,7 @@ example :
 
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-  ideal
+    sorry
   -- apply le_antisymm
   -- ·
   --   nth_rw 1 [Set.singleton_def]

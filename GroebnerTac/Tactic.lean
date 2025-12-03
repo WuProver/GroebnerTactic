@@ -89,6 +89,12 @@ def Mon.mkQ {u v : Lean.Level} (m : Mon) (σ : Q(Type u))
       let m := m.mkQ σ instOfNat R instField
       q($p * $m))
 
+/-`Mon.mkTerm` constructs a `Term` from a Mon structure,-/
+def Mon.mkTerm (m' : Mon) : m Term := do
+  let c : Term ← `(term| MvPolynomial.C $(← m'.c.mkTerm))
+  m'.e.foldlM (fun p m ↦ do `(term| $p * $(← m.mkTerm))) c
+
+
 /-Define a structure `Polynomial` to represent a MvPolynomial-/
 def Polynomial := List Poly.Mon
 deriving FromJson, ToJson, Repr
@@ -103,6 +109,10 @@ def Polynomial.mkQ {u v : Lean.Level} (p : Polynomial) (σ : Q(Type $u))
     (fun p m ↦
       let m := m.mkQ σ instOfNat R instField
       q($p + $m))
+
+/-`Polynomial.mkTerm` constructs a `Term` from a Polynomial structure,-/
+def Polynomial.mkTerm (p : Polynomial) : m Term := do
+  p.foldlM (fun p m ↦ do `(term| $p + $(← m.mkTerm))) (← `(0))
 
 end Poly
 
@@ -125,6 +135,7 @@ end Poly
       "[{\"c\" : [1, 2], \"e\": [[0, 2], [2, 3]]}, {\"c\" : [3, 5], \"e\": [[4, 1]]}]")
 
 #check Lean.MetaM Unit
+
 
 open Qq in
 #eval do
@@ -210,7 +221,8 @@ def parseResult (result : Except String Poly.Polynomial) : Lean.MetaM (Option (P
   | .error e => IO.throwServerError <|
   s!"Error when convert result to polynomial structure Error: {e}"
 
-def processElement (jsonElement : Json) : MetaM Expr := do
+/-`mkPolyExpr` convert `Json` returned by sage to `Expr` -/
+def mkPolyExpr (jsonElement : Json) : MetaM Expr := do
   let mon_result := Lean.fromJson? (α := Poly.Polynomial) jsonElement
   let mon ← parseResult mon_result
   match mon with
@@ -221,6 +233,17 @@ def processElement (jsonElement : Json) : MetaM Expr := do
         let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
         Lean.logInfo p
         pure p
+
+/-`mkPolyTerm` convert `Json` returned by sage to `Term` -/
+def mkPolyTerm (jsonElement : Json) : MetaM Term := do
+  let poly_result := Lean.fromJson? (α := Poly.Polynomial) jsonElement
+  let poly ← parseResult poly_result
+  match poly with
+  | none => IO.throwServerError "There is not any result be parsed"
+  | some p =>
+    let p ← p.mkTerm
+    Lean.logInfo p
+    pure p
 
 def exprListToSyntaxArray (es : List Expr) : MetaM (Array Syntax) := do
   es.toArray.mapM fun e => do
@@ -233,26 +256,30 @@ def liftListQ (xs : List (Q(MvPolynomial ℕ ℚ))) : Q(List (MvPolynomial ℕ �
       let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
       q($x :: $xs)
 
-def parseCoeff (a : Json) : TacticM Term := do
-  let Except.ok b:= a.getArr? | failure
-  let process_a:= b.mapM processElement
-  let resultArray ←  process_a
-  let xs := resultArray.toList
-  let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
-  let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
-  let xs_get := q($get $xs)
-  let xs_get <- Lean.PrettyPrinter.delab xs_get
-  pure xs_get
+/-`mkPolyListTerm` convert `Json` to the `Expr` of a list of MvPolynomial using `mkPolyExpr` -/
+def mkPolyListTerm (jsonInput : Json) : TacticM Term := do
+  let Except.ok jsonArray:= jsonInput.getArr? | failure
+  let polyExprsArray := jsonArray.mapM mkPolyExpr
 
-def parseCoeff' (a : Json) : TacticM Term := do
-  let Except.ok b:= a.getArr? | failure
-  let process_a:= b.mapM processElement
-  let resultArray ←  process_a
-  let xs := resultArray.toList
-  let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
-  let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
-  let xs <- Lean.PrettyPrinter.delab xs
-  pure xs
+  let resultArray ←  polyExprsArray
+  let polyExprList := resultArray.toList
+  let get : Q((polyExprList : List (MvPolynomial ℕ ℚ)) ->
+              Fin polyExprList.length -> MvPolynomial ℕ ℚ) := q(List.get)
+  let polyExprList : Q(List (MvPolynomial ℕ ℚ)) := liftListQ polyExprList
+  let polyListExpr := q($get $polyExprList)
+  let polyListExpr <- Lean.PrettyPrinter.delab polyListExpr
+
+  pure polyListExpr
+
+
+/-`mkPolyListTerm'` convert `Json` to the `Expr` of a list of MvPolynomial using `mkPolyTerm`-/
+def mkPolyListTerm' (jsonInput : Json) : TacticM Term := do
+  let Except.ok jsonArray := jsonInput.getArr? | failure
+  let process_a:= jsonArray.mapM mkPolyTerm
+
+  let termsArray : Array Term ← jsonArray.mapM (fun x => liftMetaM (mkPolyTerm x))
+
+  `([$termsArray,*].get)
 
 /-
 In this section, we define the some functions to parse `Expr` in Lean
@@ -301,7 +328,7 @@ partial def parsePoly {u v: Lean.Level}{σ : Q(Type $u)}{R : Q(Type $v)}{r : Q(C
 
 #eval parsePoly q(1: MvPolynomial Nat Nat)
 
-/-`parseVars` parses a `Set (MvPolynomial σ R)` expression into a `List String`-/
+/-`parseSet` parses a `Set (MvPolynomial σ R)` expression into a `List String`-/
 partial def parseSet {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommSemiring $R)}
     (e : Q(Set (MvPolynomial $σ $R))) : MetaM (List String) := do
   match e with
@@ -328,7 +355,6 @@ partial def parseSet {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommS
 /-
 In this section, we define the tactics to call Sage to prove some algebraic facts
 -/
-
 elab "remainder" : tactic => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
@@ -352,13 +378,17 @@ elab "remainder" : tactic => do
       let Except.ok arr := sage_json_result.getArr? | failure
       logInfo m!"Arr: {arr[0]!}"
 
-      let processList := arr.mapM processElement
-      let resultArray ← processList
-      let xs := resultArray.toList
-      let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
-      let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
-      let xs_get := q($get $xs)
-      let xs_get <- Lean.PrettyPrinter.delab xs_get
+      -- let processList := arr.mapM mkPolyExpr
+      let processList := arr.mapM mkPolyTerm
+      -- let resultArray ← processList
+      -- let xs := resultArray.toList
+      -- let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
+      -- let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
+      -- let xs := q($get $xs)
+      -- let xs <- Lean.PrettyPrinter.delab xs_get
+      let resultArray : Array Term ← processList
+      let xs : Term ← `(term| [$resultArray:term,*].get)
+
 
       let runUse := fun x => do Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
       evalTactic (← `(tactic|
@@ -367,7 +397,7 @@ elab "remainder" : tactic => do
       evalTactic (← `(tactic|
          rw [isRemainder_range_fin, ← exists_and_right]
       ))
-      runUse xs_get
+      runUse xs
       evalTactic (← `(tactic|
         split_ands
       ))
@@ -420,12 +450,10 @@ elab "remainder'" : tactic => do
 
 
       let result := Json.parse s!"{sage_result}"
-      -- logInfo m!"[DEBUG] sage_json_result: {result}"
       let sage_json_result ← parseJson result
-      -- logInfo m!"[DEBUG] sage_json_result after parsing: {sage_json_result}"
       let Except.ok arr := sage_json_result.getArr? | failure
 
-      let processList := arr.mapM processElement
+      let processList := arr.mapM mkPolyExpr
       let resultArray ← processList
       let xs := resultArray.toList
       let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
@@ -499,14 +527,13 @@ elab "basis" : tactic  => do
       dbg_trace "parsed basis: {basislist}"
 
       let sage_result ← runSage (.basis s!"{basislist}")
-      logInfo m!"[DEBUG] check sage_result basis 11_26: {sage_result}"
       let result := Json.parse s!"{sage_result}"
       let sage_json_result ← parseJson result
 
       let Except.ok arr := sage_json_result.getArr? | failure
-      -- logInfo m!"Arr: {arr}"
-      -- logInfo m!"Arr[0]: {arr[0]!}"
-      let parsedTermsArray ← arr.mapM parseCoeff
+
+      let parsedTermsArray ←  arr.mapM mkPolyListTerm
+      logInfo m!"[DEBUG Basis] parsedTermsArray: {parsedTermsArray}"
       evalTactic (← `(tactic|
         rw [buchberger_criterion]
       ))
@@ -691,10 +718,14 @@ elab "ideal" : tactic => do
             let Except.ok coeff_arr := coeff_json.getArr? | failure
 
             let termsArray : Array Term ← coeff_arr.mapM fun coeff => do
-              let termExpr ← processElement coeff
+              let termExpr ← mkPolyExpr coeff
               Lean.PrettyPrinter.delab termExpr
 
-            logInfo m!"[DEBUG Ideal] poly to use : {termsArray}"
+            -- logInfo m!"[DEBUG Ideal] coeff_arr : {coeff_arr}"
+            -- let termsArray : Array Term ← coeff_arr.mapM fun coeff => do
+            --   mkPolyTerm coeff
+
+            -- logInfo m!"[DEBUG Ideal] poly to use : {termsArray}"
             evalTactic (← `(tactic|
               apply Ideal.insert_le_of_mem_of_le
               ))

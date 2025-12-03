@@ -8,8 +8,6 @@ import MonomialOrderedPolynomial.MvPolynomial
 import MonomialOrderedPolynomial.Polynomial
 
 import GroebnerTac.Tactic
-import GroebnerTac.Ideal
-
 
 /-!
 In this file we show some examples of using the GroebnerTac library.
