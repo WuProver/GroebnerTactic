@@ -22,12 +22,7 @@ open Lean
 
 variable {m : Type → Type} [Monad m] [MonadQuotation m] [MonadRef m]
 
-/- or
-structure V where
-  v : Nat
-  e : Nat
-deriving FromJson, ToJson, Repr
--/
+
 def V := Nat × Nat
 deriving FromJson, ToJson, Repr
 
@@ -48,12 +43,7 @@ def V.mkTerm (v : V) : m Term :=
   else
     `(term| MvPolynomial.X $v':num)
 
-/- or
-structure Q where
-  n : Int
-  d : Nat
-deriving FromJson, ToJson, Repr
--/
+
 def Q := Int × Nat
 deriving FromJson, ToJson, Repr
 
@@ -65,8 +55,6 @@ def Q.mkTerm (q : Q) : m Term :=
   else
     `(term| ($n:num / $(Syntax.mkNumLit (toString q.2))))
 
--- def Q.mkQ (q : Q) : Q(ℚ) :=
---   Mathlib.Meta.NormNum.mkRawRatLit ((q.1 : ℚ) / q.2)
 
 def Q.mkQ (q : Q) : Q(ℚ) :=
   let n : Q(Int) := mkIntLit q.1

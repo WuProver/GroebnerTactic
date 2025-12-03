@@ -157,10 +157,6 @@ example :
      exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h₅ h₄).mpr h₃
   simp at h₆
 
-
-
-
-
 /-Intersection of Ideals-/
 example :
     (Ideal.span ({X 0 ^ 3* X 1} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
@@ -174,6 +170,7 @@ example :
     have h₂ : (Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
     ⊓
     Ideal.span ({X 1 ^ 3 - X 0 * X 1} : Set (MvPolynomial (Fin 2) ℚ)) = Ideal.span {X 1 ^ 3 - X 0 * X 1} := by
+
       sorry
     sorry
 
@@ -191,7 +188,7 @@ example :
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
     have h₃ :(Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ)) ⊓ Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 2) ℚ)) = Ideal.span {X 0^3 - X 0^2*X 1^2 - X 0*X 1 + X 1^3} := by
-
+      
       sorry
     have h₄ : ((Ideal.span {X 0 ^4 - X 1}):Ideal (MvPolynomial (Fin 2) ℚ)) = Ideal.span {X 0 ^4 - X 1} := by
       exact rfl
@@ -232,7 +229,6 @@ example :
     have h₅:  Ideal.span {X 2 * (X 0 ^ 2 - X 1), (1 - X 2) * (X 1 ^ 2 - X 0)} ⊓ Ideal.span {X 0, X 1} = (Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 3) ℚ)) : Ideal (MvPolynomial (Fin 3) ℚ))
       ⊓
       Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 3) ℚ)) := by
-
        sorry
     rw [← h₅]
     rw [h₄]
@@ -248,7 +244,6 @@ example :
     have h₇ : (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 : (MvPolynomial (Fin 3) ℚ)) ∈   Ideal.span {X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3 } := by
       exact mem_span_singleton_self (X 0 ^ 3 - X 0 ^ 2 * X 1 ^ 2 - X 0 * X 1 + X 1 ^ 3)
     exact ne_of_mem_of_not_mem' h₇ h₆
-
     -- have h₁: (Ideal.span ({X 3 *(X 0 ^ 2 - X 1), (1 - X 3)*(X 1^2 - X 0)} : Set (MvPolynomial (Fin 3) ℚ)) : Ideal (MvPolynomial (Fin 3) ℚ))
     --   ⊆ (Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 3) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))⊓
     --   Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 3) ℚ)) := by
