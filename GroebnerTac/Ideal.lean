@@ -6,6 +6,8 @@ import MonomialOrderedPolynomial.Ordering
 import MonomialOrderedPolynomial.MvPolynomial
 import MonomialOrderedPolynomial.Polynomial
 
+import GroebnerTac.Tactic
+
 namespace Tactic.Submodule
 
 open Qq Lean Elab Tactic Term
@@ -146,23 +148,24 @@ example :
 
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-  apply le_antisymm
-  ·
-    nth_rw 1 [Set.singleton_def]
-    apply Ideal.insert_le_of_mem_of_le
-    ·
-      submodule_span [1, 1]
-      decide +kernel
-    apply Ideal.insert_le_of_mem_of_le
-    · submodule_span [0, 1]
-      decide +kernel
-    · simp only [Ideal.span_empty, Fin.isValue, bot_le]
-  · nth_rw 1 [Set.singleton_def]
-    apply Ideal.insert_le_of_mem_of_le
-    ·
-      submodule_span [1, -1]
-      decide +kernel
-    apply Ideal.insert_le_of_mem_of_le
-    · submodule_span [0, 1]
-      decide +kernel
-    · simp only [Ideal.span_empty, Fin.isValue, bot_le]
+  ideal
+  -- apply le_antisymm
+  -- ·
+  --   nth_rw 1 [Set.singleton_def]
+  --   apply Ideal.insert_le_of_mem_of_le
+  --   ·
+  --     submodule_span [1, 1]
+  --     decide +kernel
+  --   apply Ideal.insert_le_of_mem_of_le
+  --   · submodule_span [0, 1]
+  --     decide +kernel
+  --   · simp only [Ideal.span_empty, Fin.isValue, bot_le]
+  -- · nth_rw 1 [Set.singleton_def]
+  --   apply Ideal.insert_le_of_mem_of_le
+  --   ·
+  --     submodule_span [1, -1]
+  --     decide +kernel
+  --   apply Ideal.insert_le_of_mem_of_le
+  --   · submodule_span [0, 1]
+  --     decide +kernel
+  --   · simp only [Ideal.span_empty, Fin.isValue, bot_le]

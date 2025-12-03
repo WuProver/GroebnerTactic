@@ -81,8 +81,7 @@ set_option linter.unusedTactic false in
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
       {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
-      -- remainder'
-      sorry
+    remainder'
 
 example :
     lex.IsRemainder (1: MvPolynomial (Fin 3) ℚ)
