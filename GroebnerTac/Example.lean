@@ -26,9 +26,6 @@ set_option linter.unusedTactic false in
 open MvPolynomial
 variable {σ : Type*} (m : MonomialOrder σ)
 
--- #check Set.range_get_nil
--- #check Set.range_get_singleton
-
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by

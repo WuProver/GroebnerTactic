@@ -3,6 +3,7 @@ import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
 import MonomialOrderedPolynomial.Ordering
 import MonomialOrderedPolynomial.MvPolynomial
 import MonomialOrderedPolynomial.Polynomial
+
 import Lean.Meta.Tactic.Grind.Arith.CommRing.Poly
 
 import Groebner.Basic
@@ -22,10 +23,12 @@ open Lean
 
 variable {m : Type → Type} [Monad m] [MonadQuotation m] [MonadRef m]
 
-
+/-Define a structure `V` to represent the (index, exponent) pair of a MvPolynomial-/
 def V := Nat × Nat
 deriving FromJson, ToJson, Repr
 
+
+/-`V.mkQ` constructs a `MvPolynomial σ R` `Expr` from a V pair,-/
 def V.mkQ {u u' : Lean.Level} (v : V) (σ : Q(Type $u))
     (instOfNat : Q((n : Nat) → OfNat $σ n))
     (R : Q(Type $u'))
@@ -35,6 +38,7 @@ def V.mkQ {u u' : Lean.Level} (v : V) (σ : Q(Type $u))
   q(MvPolynomial.X ($instOfNat $i).ofNat ^ $e)
 
 
+/-`V.mkQ` constructs a `MvPolynomial σ R` `Term` from a V pair,-/
 def V.mkTerm (v : V) : m Term :=
   let v' := Syntax.mkNumLit (toString v.1)
   if v.2 ≠ 1 then
@@ -79,7 +83,6 @@ def Mon.mkQ {u v : Lean.Level} (m : Mon) (σ : Q(Type u))
 def Polynomial := List Poly.Mon
 deriving FromJson, ToJson, Repr
 
-
 def Polynomial.mkQ {u v : Lean.Level} (p : Polynomial) (σ : Q(Type $u))
     (instOfNat : Q((n : Nat) → OfNat $σ n))
     (R : Q(Type $v))
@@ -91,6 +94,7 @@ def Polynomial.mkQ {u v : Lean.Level} (p : Polynomial) (σ : Q(Type $u))
 
 end Poly
 
+/-Here's some example to test the sturcture defined before-/
 #eval do
   Lean.fromJson? (α := List Poly.Mon)
     (← Lean.Json.parse
@@ -121,10 +125,31 @@ open Qq in
   let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
   Lean.logInfo p
 
--- def qToRat : Poly.Q → ℚ
---   | (n, d) => if h : d ≠ 0 then q(n/d)
 
--- #eval q(1/2)
+inductive SageCommand where
+| remainder (poly : String) (remainder : String)
+| basis (set : String)
+| ideal (I_generator : String) (J_generator : String)
+deriving Repr
+
+def getScriptAndArgs (cmd : SageCommand) : String × Array String :=
+  match cmd with
+  | .remainder poly remainder =>
+    ("Remainder.sage", #["-p", poly, "-d", remainder])
+  | .basis set =>
+    ("Basis.sage", #["-s", set])
+  | .ideal I_generator J_generator =>
+    ("Ideal.sage", #["-I", I_generator, "-J", J_generator])
+
+def getSageScriptPath (scriptName : String) : IO FilePath := do
+  let cwd ← IO.currentDir
+  let path := cwd / "Sage" / scriptName
+  match ← path.pathExists with
+  | true => pure path
+  | false => do
+    dbg_trace f!"There does not exist {path}"
+    throw <| IO.userError s!"Could not find sage script {scriptName}"
+
 
 /- We define how to start a sage process-/
 def runsageAux (path poly remainder : String) : IO (String) := do
@@ -256,9 +281,6 @@ def liftListQ (xs : List (Q(MvPolynomial ℕ ℚ))) : Q(List (MvPolynomial ℕ �
 
 
 def parseCoeff (a : Json) : TacticM Term := do
-  -- let b ←  match a.getArr? with
-  --   | Except.ok arr => pure arr
-  --   | Except error e => throwError "Json fail"
   let Except.ok b:= a.getArr? | failure
   let process_a:= b.mapM processElement
   let resultArray ←  process_a
@@ -266,15 +288,10 @@ def parseCoeff (a : Json) : TacticM Term := do
   let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
   let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
   let xs_get := q($get $xs)
--- logInfo m!"[DEBUG] {xs_get}"
   let xs_get <- Lean.PrettyPrinter.delab xs_get
-  -- logInfo m!"[CHECK {xs_get}]"
   pure xs_get
 
 def parseCoeff' (a : Json) : TacticM Term := do
-  -- let b ←  match a.getArr? with
-  --   | Except.ok arr => pure arr
-  --   | Except error e => throwError "Json fail"
   let Except.ok b:= a.getArr? | failure
   let process_a:= b.mapM processElement
   let resultArray ←  process_a
@@ -282,7 +299,6 @@ def parseCoeff' (a : Json) : TacticM Term := do
   let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
   let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
   let xs <- Lean.PrettyPrinter.delab xs
-  -- logInfo m!"[CHECK {xs_get}]"
   pure xs
 
 
@@ -295,7 +311,6 @@ elab "remainder" : tactic => do
   | some expr =>
     match expr with
     | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder _ $R $instCommSemiring $poly $vars $r) =>
-      -- logInfo m!"[DEBUG] vars = {vars}"
       let rec parsePoly (e : Expr) : Lean.MetaM String := do
         let e ← checkTypeQ e q(MvPolynomial $σ $R)
         match e with
