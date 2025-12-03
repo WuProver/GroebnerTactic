@@ -23,26 +23,8 @@ variable {σ : Type*} (m : MonomialOrder σ)
 variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
 
 
-#check isRemainder_zero_iff_mem_ideal_of_isGroebner'
-#check existsUnique_isRemainder_of_isGroebnerBasis
-
-lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ Ideal.span G) : r + f * g ∈ Ideal.span (insert g G) := by
-  have h₁ : f * g ∈ Ideal.span (insert g G) := by
-    rw [Ideal.span_insert]
-    refine Submodule.mem_sup_left (show f * g ∈ Ideal.span {g} from ?_)
-    apply Ideal.mul_mem_left
-    exact Ideal.mem_span_singleton_self g
-  have h₂ : r ∈ Ideal.span (insert g G) := by
-    rw [Ideal.span_insert]
-    exact Submodule.mem_sup_right h
-  exact (Submodule.add_mem_iff_right (Ideal.span (insert g G)) h₂).mpr h₁
-
-
-/-这里有个问题 这两个中间的结论要做成什么样子 需要用户自己传什么东西吗-/
-/-需要改一下groebner这个tactic的证明-/
-/-这里这么做算不算做复杂了 但是证不等于的时候确实需要这么一个充要条件-/
 /-Ideal Membership problem-/
-example (f : MvPolynomial (Fin 2) ℚ):
+example :
   X 0 ∈ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
     have h₁ : letI basis := ({X 0, X 1 ^ 2} : Set <| MvPolynomial (Fin 2) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis ) := by
@@ -50,10 +32,12 @@ example (f : MvPolynomial (Fin 2) ℚ):
     have h₂ : lex.IsRemainder (X 0: MvPolynomial (Fin 2) ℚ)
       {X 0 , X 1^2} 0 := by
       remainder
-    have h₄: Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
+    have h₄: Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
+      Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
       ideal
     have h₅ : letI basis := ({X 0, X 1 ^ 2} : Set <| MvPolynomial (Fin 2) ℚ)
-    lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) ) := by
+    lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}
+    : Set (MvPolynomial (Fin 2) ℚ)) ) := by
       rw [h₄]
       norm_cast at h₁
     apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h₅).mp h₂
@@ -64,19 +48,17 @@ example (f : MvPolynomial (Fin 2) ℚ):
   decide +kernel
 
 
-#check existsUnique_isRemainder_of_isGroebnerBasis₀
-
-  -- get_basis
-
 example:
    X 2 ∉ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
     have h₁ : letI basis := ({X 0, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
-    have l₁ : Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+    have l₁ : Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
+    Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
       ideal
     have l₂ : letI basis := ({X 0, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
-    lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) ) := by
+      lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} :
+      Set (MvPolynomial (Fin 3) ℚ)) ) := by
       rw [l₁]
       norm_cast at h₁
       -- norm_cast at h₁
@@ -91,20 +73,10 @@ example:
     contradiction
 
 /-Radical Ideal Membership problem-/
-/-这里是不是做成系数表示会更好-/
 example :
   X 0 * X 1 ∈ (Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical:= by
     sorry
-    -- rw [Ideal.mem_radical_iff]
-    -- have h₁ : (Ideal.span ({X 0, X 1, 1 - X 0*X 1} : Set (MvPolynomial (Fin 3) ℚ))) = Ideal.span {1} := by
-    --   sorry
-    -- have h₂ : (1: MvPolynomial (Fin 2) ℚ) = X 0 * X 1 + (1 - X 0*X 1) := by
-    --   decide +kernel
 
-    -- sorry
-
-/-算出典范的Groebner基之后要证明他们不相等-/
-/-这里同样要用一个典范的groebner基？-/
 example :
   X 2 ∉ (Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   by_contra h
@@ -188,7 +160,7 @@ example :
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
     have h₃ :(Ideal.span ({X 0 ^ 2 - X 1} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ)) ⊓ Ideal.span ({X 1 ^ 2 - X 0} : Set (MvPolynomial (Fin 2) ℚ)) = Ideal.span {X 0^3 - X 0^2*X 1^2 - X 0*X 1 + X 1^3} := by
-      
+
       sorry
     have h₄ : ((Ideal.span {X 0 ^4 - X 1}):Ideal (MvPolynomial (Fin 2) ℚ)) = Ideal.span {X 0 ^4 - X 1} := by
       exact rfl
