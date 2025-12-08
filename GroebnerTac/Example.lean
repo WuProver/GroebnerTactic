@@ -28,25 +28,14 @@ variable {σ : Type*} (m : MonomialOrder σ)
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-     remainder
+  -- remainder?
+   remainder[0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2, 0 + C ↑(↑1 / ↑1) * X 2 ^ 3,
+       0 + C ↑(↑1 / ↑1) * X 3 ^ 4]
 
-theorem aa :
+example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
     remainder [X 0, X 1^2, X 2^3, X 3^4]
-
-#print axioms aa
-
-end
-
-open MvPolynomial MonomialOrder
-
-set_option linter.unusedSimpArgs false in
-set_option linter.unreachableTactic false in
-set_option linter.unusedTactic false in
-
-open MvPolynomial
-variable {σ : Type*} (m : MonomialOrder σ)
 
 example :
     lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
@@ -68,7 +57,6 @@ example :
       {X 0, X 1, 2 - X 3} (1) := by
     remainder
       -- sorry
-
 
 example :
     letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
@@ -92,4 +80,5 @@ example :
 
 
 
--- end
+
+end

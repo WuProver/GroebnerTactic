@@ -1,4 +1,4 @@
-# This is a file used for tactic `remainder`
+# This is a file used for tactic `ideal_not_mem`
 import argparse
 import ast
 import re
@@ -15,14 +15,15 @@ def extract_vars(poly_str, divisors_str):
 
     tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', combined_str)
 
-    seen = set()
-    ordered_vars = []
-    for var in tokens:
-        if var not in seen:
-            seen.add(var)
-            ordered_vars.append(var)
+    unique_vars = list(set(tokens))
 
-    return ordered_vars
+    def natural_keys(text):
+        return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
+
+    unique_vars.sort(key=natural_keys)
+
+    return unique_vars
+
 
 def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
 
@@ -49,7 +50,6 @@ def polynomial_division_multivariate(f, divisors, ring):
         divided = False
         for i, divisor in enumerate(divisors):
             lt_p = p.lt()
-            # print(f"[DEBUG] divisor: {divisor}")
             # print(f"[DEBUG] type: {type(divisor)}")
             divisor = ring(divisor)
             # print(f"[DEBUG] divisor': {divisor}")
@@ -75,79 +75,67 @@ def polynomial_division_multivariate(f, divisors, ring):
     else:
       raise ValueError("Verification of the result failed")
 
-def s_polynomial(f, g):
+def convert_poly_to_json(poly, vars_list):
+    terms_list = []
+    # print(f"poly {type(poly)}")
 
-    LT_f = f.lt()
-    LT_g = g.lt()
-    LC_f = LT_f.lc()
-    LM_f = LT_f / LC_f
-    LC_g = LT_g.lc()
-    LM_g = LT_g / LC_g
-    L = lcm(LT_f, LT_g)
-    s_poly = (L / LM_f) * f * LC_g  - (L / LM_g) * g * LC_f
-    return s_poly
+    ring_gens = poly.parent().gens()
+
+    if poly.is_zero():
+        terms_list.append({
+            "c": [int(0), int(1)], 
+            "e": [] 
+        })
+    else:
+        for exp_tuple, coeff in poly.dict().items():
+
+            if hasattr(coeff, 'numerator') and hasattr(coeff, 'denominator'):
+
+                coeff_num = int(coeff.numerator())
+                coeff_den = int(coeff.denominator())
+            else:
     
+                coeff_num = int(coeff)
+                coeff_den = 1
 
-def convert_quotient_to_json(quotients, vars_list):
-    json_quotients = []
-    num_vars = len(vars_list)
-    
-    var_to_index = {var: i for i, var in enumerate(vars_list)}
+            exponent_pairs = []
+            
+            for i, power in enumerate(exp_tuple):
+                if power != 0:
 
-    for q_poly in quotients:
-        terms_list = []
-        
-        # parse 0-polynomial
-        if q_poly.is_zero():
-            terms_list.append({
-                "c": [int(0), int(1)], 
-                "e": [] 
-            })
-        else:
-            for exp_tuple, coeff in q_poly.dict().items():
-                # process coefficient
-                if coeff.parent() is QQ:
-                    # process rational number
-                    coeff_num = int(coeff.numerator())
-                    coeff_den = int(coeff.denominator())
-                elif coeff.is_integer():
-                    # process int number
-                    coeff_num = int(coeff)
-                    coeff_den = 1
-                else:
-                    coeff_num = int(coeff)
-                    coeff_den = 1
-
+                    current_var = ring_gens[i]
+                    
+                    try:
+                        target_index = vars_list.index(current_var)
+                    except ValueError:
                 
-                # process exponent
-                exponent_pairs = []
-                for i, power in enumerate(exp_tuple):
-                    if power != 0:
-                        exponent_pairs.append([i, int(power)])
+                        try:
+                            target_index = vars_list.index(str(current_var))
+                        except ValueError:
+                        
+                            raise ValueError(f"Variable {current_var} not found in vars_list provided.")
 
-                terms_list.append({
-                    "c": [coeff_num, coeff_den],
-                    "e": exponent_pairs
-                })
+                    exponent_pairs.append([int(target_index), int(power)])
 
-        json_quotients.append(terms_list)
+            terms_list.append({
+                "c": [coeff_num, coeff_den],
+                "e": exponent_pairs
+            })
 
-    return json_quotients
-
-
+    return terms_list
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "remainder")
 
     parser.add_argument('-p', '--polynomial', type = str, required=True)
 
-    parser.add_argument('-d', '--divisors', type = str, required=True)
+    parser.add_argument('-s', '--set', type = str, required=True)
 
     args = parser.parse_args()
 
     try:
         # Extract variables
-        vars_list = extract_vars(args.polynomial, args.divisors)
+        vars_list = extract_vars(args.polynomial, args.set)
 
         if not vars_list:
             raise ValueError("We can not find any variable in the input polynomial")
@@ -162,26 +150,22 @@ if __name__ == "__main__":
 
         # convert str to polynomial
         f = ring(args.polynomial)
-        cleaned_str = args.divisors.strip().strip('[]')
+        cleaned_str = args.set.strip().strip('[]')
 
         if not cleaned_str:
-            divisors_list = []
+            poly_objs = []
         else:
-            divisors_list = [s.strip() for s in cleaned_str.split(',') if s.strip()]
+            poly_objs = [s.strip() for s in cleaned_str.split(',') if s.strip()]
 
         # g = (((X_0^2 + X_1^3) + X_2^4) + X_3^5)
+        I = ring.ideal(poly_objs)
+        gb = I.groebner_basis()
 
         # remainder algorithm
-        quotients, remainder = polynomial_division_multivariate(f, divisors_list, ring)
+        remainder = f.reduce(I)
 
-        # print("\n--- Result ---")
-        # print(f"Dividend (f): {f}")
-        # print(f"Divisor (G):   {divisors_list}")
-        # print(f"Quotient (q):     {quotients}")
-        # print(f"Remainder (r):   {remainder}")
-        # print("------------------------")
-        json_output = convert_quotient_to_json(quotients, vars_list)
-        # print(f"{json_output}")
+        # print(f"[DEBUG] : {remainder}")
+        json_output = convert_poly_to_json(remainder, vars_list)
         print(json.dumps(json_output))
 
     except Exception as e:

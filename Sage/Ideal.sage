@@ -1,3 +1,4 @@
+# This is a file used for tactic `ideal`
 import re
 import argparse
 import io

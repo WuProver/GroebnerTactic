@@ -48,13 +48,17 @@ theorem intersection_eq_elimination (I J : Ideal (MvPolynomial σ R)) (f : MvPol
   · intro h_in_K
     constructor
     ·
+
+
       have h1 : eval_t 1 (ι f) = f := by
         change ((eval_t 1).comp ι) f = (RingHom.id _) f
         congr 1
-        
+
         sorry
       rw [← h1]
       apply Ideal.mem_map_of_mem (eval_t 1) at h_in_K
+      simp
+      
       sorry
 
     ·

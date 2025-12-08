@@ -96,7 +96,7 @@ example :
   rw [buchberger_criterion]
   simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
     forall_eq_or_imp, forall_eq, sPolynomial_self]
-  simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
+  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
   simp_rw [isRemainder_range_fin]
   split_ands
   ·
@@ -266,5 +266,62 @@ example :
       change _ ∈ (_ : Ideal _)
       submodule_span [0, 1]
       decide +kernel
-      
+
+/-Ideal Membership Problem-/
+example :
+  X 0 ∈ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
+    have h_rm : lex.IsRemainder (X 0: MvPolynomial (Fin 2) ℚ)
+      {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} 0 := by
+      simp
+      remainder
+      -- remainder
+    have h_gb : letI basis := ({0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set <| MvPolynomial (Fin 2) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span basis ) := by
+      simp
+      basis
+    have h_ideal : Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
+      Ideal.span ({0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
+      simp
+      ideal
+    have h_gb' : letI basis := ({0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set <| MvPolynomial (Fin 2) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}
+    : Set (MvPolynomial (Fin 2) ℚ)) ) := by
+      rw [h_ideal]
+      exact h_gb
+
+    apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h_gb').mp h_rm
+
+
+example:
+   X 2 ∉ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+    have h_gb : letI basis := ( {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span basis) := by
+      simp
+      basis
+    have l_ideal : Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
+    Ideal.span ( {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      simp
+      ideal
+    have h_gb' : letI basis := ( {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
+      lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} :
+      Set (MvPolynomial (Fin 3) ℚ)) ) := by
+      rw [l_ideal]
+      exact h_gb
+      -- norm_cast at h₁
+    have h_rm : lex.IsRemainder (X 2: MvPolynomial (Fin 3) ℚ)
+      {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} (X 2) := by
+      simp
+      remainder
+    by_contra h_mem
+    have eq : X 2 = (0 : MvPolynomial (Fin 3) ℚ ):= by
+      exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h_gb' h_rm).mpr h_mem
+    have neq : X 2 ≠ (0 : MvPolynomial (Fin 3) ℚ) := by
+      decide +kernel
+    contradiction
+
+example (f : MvPolynomial (Fin 2) ℚ):
+  X 0 ∈ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
+  submodule_span [1, -1]
+  decide +kernel
+
 end

@@ -1,3 +1,5 @@
+import Mathlib
+
 import MonomialOrderedPolynomial.TreeRepr
 import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
 import MonomialOrderedPolynomial.Ordering
@@ -5,6 +7,7 @@ import MonomialOrderedPolynomial.MvPolynomial
 import MonomialOrderedPolynomial.Polynomial
 
 import Lean.Meta.Tactic.Grind.Arith.CommRing.Poly
+import Lean.Meta.Tactic.TryThis
 
 import Groebner.Basic
 import Groebner.List
@@ -156,14 +159,18 @@ inductive SageTask where
   | remainder (poly remainder : String)
   | basis (set : String)
   | ideal (genI genJ : String)
+  | GBasis (set : String)
+  | GRemainder (poly set: String)
 
 
 def runSage (task : SageTask) : IO String := do
 
   let (scriptName, scriptArgs) := match task with
-    | .remainder poly rem => ("Remainder.sage", #["-p", poly, "-d", rem])
-    | .basis set          => ("Basis.sage",     #["-s", set])
-    | .ideal genI genJ    => ("Ideal.sage",     #["-I", genI, "-J", genJ])
+    | .remainder poly rem  => ("Remainder.sage", #["-p", poly, "-d", rem])
+    | .basis set           => ("Basis.sage",     #["-s", set])
+    | .ideal genI genJ     => ("Ideal.sage",     #["-I", genI, "-J", genJ])
+    | .GBasis set          => ("GBasis.sage",    #["-s", set])
+    | .GRemainder poly set => ("GRemainder.sage", #["-p", poly, "-s", set])
 
   let cwd ← IO.currentDir
   let path := cwd / "Sage" / scriptName
@@ -208,7 +215,8 @@ def parseJson (result : Except String Json) : Lean.MetaM (Json) := do
   | .error e => IO.throwServerError <|
   s!"Could not parse SageMath output : {result}\n Error : {e}"
 
-def parseResult (result : Except String Poly.Polynomial) : Lean.MetaM (Option (Poly.Polynomial)) := do
+def parseResult (result : Except String Poly.Polynomial)
+  : Lean.MetaM (Option (Poly.Polynomial)) := do
   match result with
   | .ok parsed_result => return parsed_result
   | .error e => IO.throwServerError <|
@@ -269,14 +277,17 @@ In this section, we define the some functions to parse `Expr` in Lean
 -/
 
 /-`parsePoly` parses a `MvPolynomial σ R` expression into a `String`-/
-partial def parsePoly {u v: Lean.Level}{σ : Q(Type $u)}{R : Q(Type $v)}{r : Q(CommSemiring $R)} (e : Q(MvPolynomial $σ $R)) : MetaM String := do
+partial def parsePoly {u v: Lean.Level}
+  {σ : Q(Type $u)}{R : Q(Type $v)}
+  {r : Q(CommSemiring $R)} (e : Q(MvPolynomial $σ $R)) : MetaM String := do
   match e with
   | ~q($a + $b) =>
     let a  ← parsePoly a
     let b  ← parsePoly b
     pure s!"({a} + {b})"
 
-  | ~q(@HSub.hSub (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
+  | ~q(@HSub.hSub (MvPolynomial «$σ» «$R»)
+    (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
             let a ← parsePoly a
             let b ← parsePoly b
             pure s!"({a} - {b})"
@@ -319,9 +330,6 @@ partial def parseSet {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommS
 
     let VarA ← parsePoly (σ := σ) (R := R) (r := r) a
     let VarB ← parseSet (σ := σ) (R := R) (r := r) b
-
-    -- logInfo m!"[DEBUG] VarA: {VarA}"
-    -- logInfo m!"[DEBUG] VarB: {VarB}"
 
     pure (VarA :: VarB)
   | ~q((∅: Set (MvPolynomial _ _))) => pure []
@@ -393,7 +401,7 @@ def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit :
           decide +kernel +revert
     ))
 
-syntax (name := checkRemainder) "remainder" term : tactic
+syntax (name := checkRemainder) "remainder" "[" term,* "]" : tactic
 
 @[tactic checkRemainder]
 def evalCheckRemainder : Tactic := fun stx => do
@@ -404,53 +412,261 @@ def evalCheckRemainder : Tactic := fun stx => do
   | none => return
   | some expr =>
     match expr with
-    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder _ $R $instCommSemiring $poly $vars $r) =>
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
+       _ $R $instCommSemiring $poly $vars $r) =>
 
-      -- [Auto-Detection] Check if the remainder `r` is zero
       let isZeroTarget ← isDefEq r q(0)
 
       match stx with
-      | `(tactic| remainder $userList) => do
-        let witness : Term ← `(List.get $userList)
+
+      | `(tactic| remainder [ $args,* ]) => do
+
+        let witness : Term ← `([ $args,* ])
 
         verifyRemainderLogic witness isZeroTarget
+
       | _ => throwUnsupportedSyntax
 
 
-elab "remainder" : tactic => do
+open Lean.Meta.Tactic.TryThis
+
+syntax (name := remainderTry) "remainder?" : tactic
+
+@[tactic remainderTry]
+def evalRemainderTry : Tactic := fun stx => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
+
   match t with
   | none => return
   | some expr =>
     match expr with
-    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder _ $R $instCommSemiring $poly $vars $r) =>
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
+      _ $R $instCommSemiring $poly $vars $r) =>
 
-      -- [Auto-Detection] Check if the remainder `r` is zero
       let isZeroTarget ← isDefEq r q(0)
-
-      -- Parse inputs for Sage
       let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
       let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
 
-      -- logInfo m!"[Sage Input] Poly: {parsedPoly}, Vars: {varsList}"
-      -- logInfo m!"[Logic Mode] Is remainder zero? {isZeroTarget}"
-
-      -- Run Sage
       let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
       let result := Json.parse s!"{sage_result}"
       let sage_json_result ← parseJson result
       let Except.ok arr := sage_json_result.getArr? | failure
-      let processList := arr.mapM mkPolyTerm
-      let resultArray : Array Term ← processList
-      let witnessTerm : Term ← `(term| [$resultArray:term,*].get)
 
-      -- Run the verification logic
+      let processList := arr.mapM mkPolyExpr
+      let exprList ←  processList
+      let exprList := exprList.toList
+
+      let args : Array Term ← exprList.toArray.mapM fun e => do
+        Lean.PrettyPrinter.delab e
+
+      let suggestion : TSyntax `tactic ← `(tactic| remainder [ $args,* ])
+      addSuggestion stx suggestion
+
+      let listQ : Q(List (MvPolynomial ℕ ℚ)) := liftListQ exprList
+
+      let getQ : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length
+         -> MvPolynomial ℕ ℚ) := q(List.get)
+      let witnessQ := q($getQ $listQ)
+
+      let witnessTerm : Term ← Lean.PrettyPrinter.delab witnessQ
+
       verifyRemainderLogic witnessTerm isZeroTarget
 
     | _ =>
       dbg_trace "Goal is not a `lex.IsRemainder` proposition."
+      throwUnsupportedSyntax
+
+-- syntax (name := remainderTactic) "remainder" ("?")? (ppSpace "[" term,* "]")? : tactic
+syntax (name := remainderNormal) "remainder" (ppSpace "[" term,* "]")? : tactic
+-- syntax (name := remainderTry) "remainder?" (ppSpace "[" term,* "]")? : tactic
+
+@[tactic remainderNormal, tactic remainderTry]
+def evalRemainderTactic : Tactic := fun stx => do
+  let goal ← Lean.Elab.Tactic.getMainGoal
+  let t ← goal.getType
+  let t ← checkTypeQ t q(Prop)
+
+  match t with
+  | none => return
+  | some expr =>
+    match expr with
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
+      _ $R $instCommSemiring $poly $vars $r) =>
+
+      let isZeroTarget ← isDefEq r q(0)
+
+      let hasQuestionMark := !stx[1].isNone
+
+      let userArgs? : Option (Array Syntax) :=
+        if stx[2].isNone then none
+        else some stx[2][1].getSepArgs
+
+      let (witnessSyntax, shouldSuggest, suggestionArgs) ← match userArgs? with
+        | some args =>
+          let argsTerms : Array (TSyntax `term) := args.map fun s => ⟨s⟩
+          let listSyntax ← `([$argsTerms,*])
+
+          pure (listSyntax, false, argsTerms)
+
+        | none => do
+          let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
+          let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
+
+          let varsStr := s!"{varsList}"
+          let sage_result ← runSage (.remainder parsedPoly varsStr)
+          logInfo m!"{parsedPoly}"
+          logInfo m!"{varsList}"
+          logInfo m!"{sage_result}"
+
+          let result := Json.parse sage_result
+          let sage_json_result ← parseJson result
+          let Except.ok arr := sage_json_result.getArr? | failure
+
+          let processList := arr.mapM mkPolyExpr
+          let exprList ← processList
+          let exprList := exprList.toList
+
+          let listQ : Q(List (MvPolynomial ℕ ℚ)) := liftListQ exprList
+          let listSyntax : Term ← Lean.PrettyPrinter.delab listQ
+
+          let argsTerms : Array Term ← exprList.toArray.mapM fun e => do
+             Lean.PrettyPrinter.delab e
+
+          pure (listSyntax, hasQuestionMark, argsTerms)
+
+      let witness : Term ← `(List.get $witnessSyntax)
+      verifyRemainderLogic witness isZeroTarget
+
+      if shouldSuggest then
+
+        let suggestion : TSyntax `tactic ← `(tactic| remainder [ $suggestionArgs,* ])
+        addSuggestion stx suggestion
+
+    | _ => throwUnsupportedSyntax
+
+-- @[tactic remainderNormal, tactic remainderTry]
+-- def evalRemainderTactic : Tactic := fun stx => do
+--   let goal ← Lean.Elab.Tactic.getMainGoal
+--   let t ← goal.getType
+--   let t ← checkTypeQ t q(Prop)
+
+--   match t with
+--   | none => return
+--   | some expr =>
+--     match expr with
+--     | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
+--        _ $R $instCommSemiring $poly $vars $r) =>
+
+--       let isZeroTarget ← isDefEq r q(0)
+
+--       let hasQuestionMark := !stx[1].isNone
+
+--       let userArgs? : Option (Array Syntax) :=
+--         if stx[2].isNone then
+--           none
+--         else
+--           some stx[2][1].getSepArgs
+
+--       let (witnessSyntax, shouldSuggest) ← match userArgs? with
+--         | some args =>
+--           -- user provide: remainder [h1, h2, ...]
+--           let argsTerms : Array (TSyntax `term) := args.map fun s => ⟨s⟩
+
+--           let listSyntax ← `([$argsTerms,*])
+
+--           pure (listSyntax, false)
+
+--         | none => do
+--           -- user don't provide
+--           let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
+--           let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
+
+--           let varsStr := s!"{varsList}"
+--           let sage_result ← runSage (.remainder parsedPoly varsStr)
+
+
+--           let result := Json.parse sage_result
+--           let sage_json_result ← parseJson result
+--           let Except.ok arr := sage_json_result.getArr? | failure
+
+
+--           let processList := arr.mapM mkPolyExpr
+--           let exprList ← processList
+--           let exprList := exprList.toList
+
+--           let listQ : Q(List (MvPolynomial ℕ ℚ)) := liftListQ exprList
+--           let listSyntax : Term ← Lean.PrettyPrinter.delab listQ
+
+--           pure (listSyntax, hasQuestionMark)
+
+--       let witness : Term ← `(List.get $witnessSyntax)
+
+--       verifyRemainderLogic witness isZeroTarget
+
+--       if shouldSuggest then
+--         let suggestion : TSyntax `tactic ← `(tactic| remainder [ $args,* ])
+--         addSuggestion stx suggestion
+--         -- let suggestion : TSyntax `tactic ← `(tactic| remainder $witnessSyntax)
+--         -- addSuggestion stx suggestion
+
+--     | _ =>
+--       throwError "Goal is not a `lex.IsRemainder` proposition."
+-- @[tactic remainderTactic]
+-- def evalRemainderTactic : Tactic := fun stx => do
+--   let goal ← Lean.Elab.Tactic.getMainGoal
+--   let t ← goal.getType
+--   let t ← checkTypeQ t q(Prop)
+
+--   match t with
+--   | none => return
+--   | some expr =>
+--     match expr with
+--     | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
+--       _ $R $instCommSemiring $poly $vars $r) =>
+
+--       let isZeroTarget ← isDefEq r q(0)
+--       let isTry := !stx[1].isNone
+
+--       let userTerm? : Option Term :=
+--         if stx[2].isNone then none
+--         else some ⟨stx[2][0]⟩
+
+--       let ((witnessSyntax, shouldSuggest) : (Term × Bool)) ← match userTerm? with
+--         | some userList =>
+--           pure (userList, false)
+
+--         | none => do
+
+--           let parsedPoly ←  parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
+--           let varsList ←  parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
+
+--           let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
+--           let result := Json.parse s!"{sage_result}"
+--           let sage_json_result ← parseJson result
+--           let Except.ok arr := sage_json_result.getArr? | failure
+
+--           let processList := arr.mapM mkPolyExpr
+--           let exprList ←  processList
+--           let exprList := exprList.toList
+--           let listQ : Q(List (MvPolynomial ℕ ℚ)) := liftListQ exprList
+--           let listSyntax : Term ← Lean.PrettyPrinter.delab listQ
+
+--           pure (listSyntax, isTry)
+
+--       let witness : Term ← `(List.get $witnessSyntax)
+
+--       verifyRemainderLogic witness isZeroTarget
+
+--       if shouldSuggest then
+--         let suggestion : TSyntax `tactic ← `(tactic| remainder $witnessSyntax)
+--         addSuggestion stx suggestion
+
+--     | _ =>
+--       throwError "Goal is not a `lex.IsRemainder` proposition."
+
+
 
 
 elab "remainder_zero" : tactic => do
@@ -461,11 +677,12 @@ elab "remainder_zero" : tactic => do
   | none => return
   | some expr =>
     match expr with
-    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder _ $R $instCommSemiring $poly $vars $r) =>
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
+      _ $R $instCommSemiring $poly $vars $r) =>
 
       let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
       let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
-      let parsedR ← parsePoly r
+      -- let parsedR ← parsePoly r
 
       let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
 
@@ -481,7 +698,9 @@ elab "remainder_zero" : tactic => do
       let xs : Term ← `(term| [$resultArray:term,*].get)
 
 
-      let runUse := fun x => do Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
+      let runUse := fun x => do
+        Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
+
       evalTactic (← `(tactic|
          simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
       ))
@@ -525,12 +744,13 @@ elab "remainder_neq_zero" : tactic => do
   | none => return
   | some expr =>
     match expr with
-    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder _ $R $instCommSemiring $poly $vars $r) =>
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
+      _ $R $instCommSemiring $poly $vars $r) =>
       logInfo m!"[DEBUG] vars = {vars}"
 
       let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
       let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
-      let parsedR ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) r
+      -- let parsedR ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) r
 
       logInfo m!"parsed vars: {varsList}"
       logInfo m!"parsed polynomial: {parsedPoly}"
@@ -547,14 +767,17 @@ elab "remainder_neq_zero" : tactic => do
       let processList := arr.mapM mkPolyExpr
       let resultArray ← processList
       let xs := resultArray.toList
-      let get : Q((xs : List (MvPolynomial ℕ ℚ)) -> Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
+      let get : Q((xs : List (MvPolynomial ℕ ℚ)) ->
+        Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
       let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
       -- logInfo m!"[DEBUG] {xs}"
       let xs_get := q($get $xs)
       -- logInfo m!"[DEBUG] {xs_get}"
       let xs_get <- Lean.PrettyPrinter.delab xs_get
       -- logInfo m!"[CHECK {xs_get}]"
-      let runUse := fun x => do Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
+      let runUse := fun x => do
+        Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
+
       evalTactic (← `(tactic|
         simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
       ))
@@ -603,8 +826,6 @@ elab "remainder_neq_zero" : tactic => do
     | _ =>
       dbg_trace "not a lex.IsRemainder"
 
-
-/-`basis` helps prove if a Set is Groebner Basis-/
 elab "basis" : tactic  => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
@@ -613,7 +834,8 @@ elab "basis" : tactic  => do
   | none => return
   | some expr =>
     match expr with
-    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsGroebnerBasis _ $R $instCommSemiring $basis $ideal) =>
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsGroebnerBasis
+      _ $R $instCommSemiring $basis $ideal) =>
 
       let basislist <- parseSet basis
       dbg_trace "parsed basis: {basislist}"
@@ -690,13 +912,13 @@ lemma aux_add_smul (R : Type*) {M : Type*}
 
 lemma aux_smul (R : Type*) {M : Type*}
     [Semiring R] [AddCommMonoid M] [Module R M]
-    (g : R) (f : M):
+    (g : R) (f : M) :
     g • f ∈ Submodule.span R {f} :=
   Submodule.smul_mem _ _ (Submodule.mem_span_singleton_self _)
 
 variable {R : Type*} [CommRing R] {I : Ideal R} {a : R} {B : Set R}
 
-lemma Ideal.insert_le_of_mem_of_le:
+lemma Ideal.insert_le_of_mem_of_le :
     a ∈ I → Ideal.span B ≤ I → Ideal.span (insert a B) ≤ I := by
     intro ha hB
     rw [Ideal.span_insert]
@@ -836,6 +1058,182 @@ elab "ideal" : tactic => do
         dbg_trace "The left side is not an Ideal.span"
     | _ =>
       logError "Error: Goal is not an equality (Eq.eq) structure."
+
+
+
+def mkSetSyntaxFromTerms (terms : Array Term) : MetaM Term := do
+  if terms.isEmpty then
+    `(∅)
+  else
+    let termStrs ← terms.mapM fun t => do
+      let fmt ← Lean.PrettyPrinter.ppTerm t
+      return fmt.pretty
+
+    let setStr := "{" ++ String.intercalate ", " termStrs.toList ++ "}"
+
+    let env ← getEnv
+    match Lean.Parser.runParserCategory env `term setStr with
+    | Except.ok stx => return ⟨stx⟩
+    | Except.error e => throwError s!"Failed to create set syntax: {e}"
+
+syntax (name := groebnerMem) "ideal_mem" : tactic
+
+@[tactic groebnerMem]
+def evalGroebnerMem : Tactic := fun stx => do
+  let goal ← Lean.Elab.Tactic.getMainGoal
+  let t ← goal.getType
+  let t ← checkTypeQ t q(Prop)
+
+  match t with
+  | none => return
+  | some expr =>
+    match expr with
+    | ~q($f ∈ ($I : @Ideal (@MvPolynomial $σ $R $i) $ring)) =>
+
+      match I with
+      | ~q(Ideal.span $I_gens) =>
+        let I_gens_list ←  parseSet I_gens
+
+        let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
+        let gb := Json.parse s!"{sage_gb}"
+        let gb ← parseJson gb
+        let Except.ok gb_arr := gb.getArr? | failure
+
+        let exprArray ← gb_arr.mapM fun jsonElem => mkPolyExpr jsonElem
+
+        let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
+        let f_term ← Lean.PrettyPrinter.delab f
+        let I_term ← Lean.PrettyPrinter.delab I
+
+        let setSyntax ← mkSetSyntaxFromTerms argsTerms
+
+        let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
+
+        logInfo m!"[GB Set] : {setSyntax}"
+
+        evalTactic (← `(tactic|
+          have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
+            simp
+            basis
+        ))
+
+        evalTactic (← `(tactic|
+          have h_rm : lex.IsRemainder ($f_term) ($setSyntax : Set $polyType) 0 := by
+            simp
+            remainder
+        ))
+
+        evalTactic (← `(tactic|
+          have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
+            simp
+            ideal
+        ))
+
+        evalTactic (← `(tactic|
+          have h_gb' : lex.IsGroebnerBasis ($setSyntax : Set $polyType) $I_term := by
+            rw [h_ideal]
+            exact h_gb
+        ))
+
+        evalTactic (← `(tactic|
+          apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h_gb').mp h_rm
+        ))
+
+    | _ => throwError "Goal must be of form `f ∈ Ideal.span S`"
+
+
+syntax (name := groebnerNotMem) "ideal_not_mem" : tactic
+
+@[tactic groebnerNotMem]
+def evalGroebnerNotMem : Tactic := fun stx => do
+  let goal ← Lean.Elab.Tactic.getMainGoal
+  let t ← goal.getType
+  let t ← checkTypeQ t q(Prop)
+
+  match t with
+  | none => return
+  | some expr =>
+    match expr with
+    | ~q(¬($f ∈ ($I : @Ideal (@MvPolynomial $σ $R $i) $ring))) =>
+
+
+      match I with
+      | ~q(Ideal.span $I_gens) =>
+        let f_str ←  parsePoly f
+
+        let I_gens_list ←  parseSet I_gens
+
+        let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
+        let gb := Json.parse s!"{sage_gb}"
+        let gb ← parseJson gb
+        let Except.ok gb_arr := gb.getArr? | failure
+
+        let exprArray ← gb_arr.mapM fun jsonElem => mkPolyExpr jsonElem
+
+        let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
+
+        let sage_rm ← runSage (.GRemainder f_str s!"{I_gens_list}")
+
+        let Except.ok parsed := Lean.Json.parse sage_rm | failure
+        let Except.ok p := Lean.fromJson? (α := Poly.Polynomial) parsed | failure
+        let instOfNat ← Qq.synthInstanceQ q((n : Nat) → OfNat Nat n)
+        let instField ← Qq.synthInstanceQ q(Field ℚ)
+        let rm := p.mkQ q(Nat) instOfNat q(ℚ) instField
+
+        let f_term ← Lean.PrettyPrinter.delab f
+        let I_term ← Lean.PrettyPrinter.delab I
+        let rm_term ← Lean.PrettyPrinter.delab rm
+
+        let setSyntax ← mkSetSyntaxFromTerms argsTerms
+
+        let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
+
+        evalTactic (← `(tactic|
+          have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
+            simp
+            basis
+        ))
+
+        evalTactic (← `(tactic|
+          have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
+            simp
+            ideal
+        ))
+
+        evalTactic (← `(tactic|
+          have h_gb' : lex.IsGroebnerBasis ($setSyntax : Set $polyType) $I_term := by
+            rw [h_ideal]
+            exact h_gb
+        ))
+
+        evalTactic (← `(tactic|
+         have h_rm : lex.IsRemainder ($f_term : $polyType)
+         ($setSyntax : Set $polyType) ($rm_term : $polyType ) := by
+            simp
+            remainder
+        ))
+
+        evalTactic (← `(tactic|
+          by_contra h_mem
+        ))
+
+        evalTactic (← `(tactic|
+          have neq : ($rm_term : $polyType) ≠ (0 : $polyType) := by
+            decide +kernel
+        ))
+
+        evalTactic (← `(tactic|
+          have eq : ($rm_term : $polyType) = (0 : $polyType) := by
+            exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h_gb' h_rm).mpr h_mem
+        ))
+
+        evalTactic (← `(tactic|
+          contradiction
+        ))
+
+
+
+    | _ => throwError "Goal must be of form `f ∉ Ideal.span S`"
 
 
 
