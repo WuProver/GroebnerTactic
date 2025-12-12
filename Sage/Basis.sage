@@ -83,6 +83,9 @@ def polynomial_division_multivariate(f, divisors, ring):
 
 def s_polynomial(f, g):
 
+    if f == 0 or g == 0:
+        return 0
+
     LM_f = f.lm() 
     LM_g = g.lm()
     

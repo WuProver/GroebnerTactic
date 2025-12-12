@@ -288,7 +288,6 @@ example :
     : Set (MvPolynomial (Fin 2) ℚ)) ) := by
       rw [h_ideal]
       exact h_gb
-
     apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h_gb').mp h_rm
 
 
@@ -323,5 +322,123 @@ example (f : MvPolynomial (Fin 2) ℚ):
   X 0 ∈ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
   submodule_span [1, -1]
   decide +kernel
+
+/-Radical Ideal Membership-/
+example :
+  X 0 * X 1 ∈ (Ideal.span ({X 0 ^ 5, X 1 ^ 5} : Set (MvPolynomial (Fin 3) ℚ))).radical:= by
+    rw [Ideal.mem_radical_iff]
+    use 5
+    ideal_membership
+
+example :
+  X 2 ∉ (Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  by_contra h
+  rw [Ideal.mem_radical_iff] at h
+  rcases h with ⟨n, hn⟩
+  have h₁: (1: MvPolynomial (Fin 3) ℚ) = X 2 ^ n + (1 - X 2^n) := by
+    -- decide +kernel
+    simp
+  have h₂: ((1 - X 2): MvPolynomial (Fin 3) ℚ) ∣ (1 - X 2^n) := by
+    exact one_sub_dvd_one_sub_pow (X 2) n
+  have h₃: 1 ∈ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+    rcases h₂ with ⟨p, hp⟩
+    rw [hp] at h₁
+    have l₁ : X 2 ^ n ∈ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      have t₁: Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) ≤ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+        apply Ideal.span_mono
+        simp
+      exact t₁ hn
+    have l₂ : (1 - X 2) * p ∈ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      apply Ideal.mul_mem_right
+      have t₁: Ideal.span ({1-X 2} : Set (MvPolynomial (Fin 3) ℚ)) ≤ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+        apply Ideal.span_mono
+        simp
+      have t₂: (1 - X 2) ∈ Ideal.span ({1-X 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+        exact Ideal.mem_span_singleton_self (1 - X 2)
+      exact t₁ t₂
+    rw [h₁]
+    apply Ideal.add_mem _ l₁ l₂
+    rw [← h₁]
+    refine ⟨Ideal.span {1 - X 2, X 0, X 1}, ?_⟩
+    ext x
+    constructor
+    · intro h
+      simp at h
+      have l: ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) ⊆ (Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))) := by
+        exact Ideal.subset_span
+      exact h l
+    · intro h
+      simp
+      intro a
+      simp at h
+      exact h
+  have h₄ : lex.IsRemainder (1: MvPolynomial (Fin 3) ℚ)
+      {1 - X 2, X 0, X 1} 1 := by
+    remainder
+  have h₅ : letI basis := ({1 - X 2, X 0, X 1} : Set <| MvPolynomial (Fin 3) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span basis) := by
+    basis
+  have h₆ : (1: MvPolynomial (Fin 3) ℚ) = 0 := by
+     exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h₅ h₄).mpr h₃
+  simp at h₆
+
+
+/-Intersection of Ideals-/
+example :
+  (Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
+      ⊓
+  Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
+      =
+  Ideal.span {X 0 * X 1} := by
+    let I := Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ))
+    let J := Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
+    let K := Ideal.span ({X 0 * X 1} : Set (MvPolynomial (Fin 2) ℚ))
+
+    let I_lift := I.map (MvPolynomial.rename Option.some)
+    let J_lift := J.map (MvPolynomial.rename Option.some)
+    let K_lift := K.map (MvPolynomial.rename Option.some)
+
+    let t : MvPolynomial (Option (Fin 2)) ℚ := MvPolynomial.X none
+
+    let L := Ideal.span {t} * I_lift ⊔ Ideal.span {1-t} * J_lift
+
+    have h₁ :  I.map (rename some) ⊓ J.map (rename some)
+      = K.map (rename some) := by
+      apply le_antisymm
+      ·
+        sorry
+      · sorry
+    simp [I, J, K] at h₁
+    -- rw [← Ideal.map_inf] at h₁
+    sorry
+
+example :
+  (Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
+      ⊓
+  Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
+      =
+  Ideal.span {X 0 * X 1} := by
+    let I := Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ))
+    let J := Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
+    let K := Ideal.span ({X 0 * X 1} : Set (MvPolynomial (Fin 2) ℚ))
+
+    let I_lift := I.map (MvPolynomial.rename Option.some)
+    let J_lift := J.map (MvPolynomial.rename Option.some)
+    let K_lift := K.map (MvPolynomial.rename Option.some)
+
+    let t : MvPolynomial (Option (Fin 2)) ℚ := MvPolynomial.X none
+
+    let L := Ideal.span {t} * I_lift ⊔ Ideal.span {1-t} * J_lift
+
+    have h₁ : (I ⊓ J).map
+       (algebraMap (MvPolynomial (Fin 2) ℚ) (Polynomial ((MvPolynomial (Fin 2) ℚ)))) =
+       K.map (algebraMap (MvPolynomial (Fin 2) ℚ) (Polynomial ((MvPolynomial (Fin 2) ℚ)))):= by
+      apply le_antisymm
+      ·
+        simp [I, J, K]
+        sorry
+      · sorry
+
+    sorry
 
 end

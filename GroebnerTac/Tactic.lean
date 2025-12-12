@@ -15,7 +15,6 @@ import Groebner.List
 import Mathlib.Tactic
 import Lean
 
-
 namespace Mathlib.Tactic.IsRemainder
 open Lean Elab Tactic Meta Term
 open Meta Ring Qq PrettyPrinter AtomM
@@ -23,6 +22,7 @@ open MvPolynomial MonomialOrder
 
 namespace Poly
 open Lean
+
 
 variable {m : Type → Type} [Monad m] [MonadQuotation m] [MonadRef m]
 
@@ -160,7 +160,8 @@ inductive SageTask where
   | basis (set : String)
   | ideal (genI genJ : String)
   | GBasis (set : String)
-  | GRemainder (poly set: String)
+  | GRemainder (poly set : String)
+  | radical (poly set : String)
 
 
 def runSage (task : SageTask) : IO String := do
@@ -171,6 +172,7 @@ def runSage (task : SageTask) : IO String := do
     | .ideal genI genJ     => ("Ideal.sage",     #["-I", genI, "-J", genJ])
     | .GBasis set          => ("GBasis.sage",    #["-s", set])
     | .GRemainder poly set => ("GRemainder.sage", #["-p", poly, "-s", set])
+    | .radical poly set    => ("Radical.sage",  #["-p", poly, "-s", set])
 
   let cwd ← IO.currentDir
   let path := cwd / "Sage" / scriptName
@@ -342,6 +344,7 @@ partial def parseSet {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommS
     let vStr ← parsePoly (σ := σ) (R := R) (r := r) v
     pure [vStr]
   | _ => unreachable!
+
 
 /-
 In this section, we define the tactics to call Sage to prove some algebraic facts
@@ -1076,10 +1079,9 @@ def mkSetSyntaxFromTerms (terms : Array Term) : MetaM Term := do
     | Except.ok stx => return ⟨stx⟩
     | Except.error e => throwError s!"Failed to create set syntax: {e}"
 
-syntax (name := groebnerMem) "ideal_mem" : tactic
-
-@[tactic groebnerMem]
-def evalGroebnerMem : Tactic := fun stx => do
+syntax (name := groebnerMembership) "ideal_membership" : tactic
+@[tactic groebnerMembership]
+def evalGroebnerMembership : Tactic := fun stx => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
@@ -1105,11 +1107,15 @@ def evalGroebnerMem : Tactic := fun stx => do
         let f_term ← Lean.PrettyPrinter.delab f
         let I_term ← Lean.PrettyPrinter.delab I
 
+        -- logInfo m!"f_term : {f_term}"
+        -- logInfo m!"I_term : {I_term}"
+
         let setSyntax ← mkSetSyntaxFromTerms argsTerms
+        -- logInfo m!"setSyntax {setSyntax}"
 
         let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-        logInfo m!"[GB Set] : {setSyntax}"
+
 
         evalTactic (← `(tactic|
           have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
@@ -1126,7 +1132,7 @@ def evalGroebnerMem : Tactic := fun stx => do
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
             simp
-            ideal
+            first | done | ideal
         ))
 
         evalTactic (← `(tactic|
@@ -1138,24 +1144,9 @@ def evalGroebnerMem : Tactic := fun stx => do
         evalTactic (← `(tactic|
           apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h_gb').mp h_rm
         ))
+      | _ => throwError "Expect Ideal.span, but got {I}"
 
-    | _ => throwError "Goal must be of form `f ∈ Ideal.span S`"
-
-
-syntax (name := groebnerNotMem) "ideal_not_mem" : tactic
-
-@[tactic groebnerNotMem]
-def evalGroebnerNotMem : Tactic := fun stx => do
-  let goal ← Lean.Elab.Tactic.getMainGoal
-  let t ← goal.getType
-  let t ← checkTypeQ t q(Prop)
-
-  match t with
-  | none => return
-  | some expr =>
-    match expr with
     | ~q(¬($f ∈ ($I : @Ideal (@MvPolynomial $σ $R $i) $ring))) =>
-
 
       match I with
       | ~q(Ideal.span $I_gens) =>
@@ -1183,6 +1174,9 @@ def evalGroebnerNotMem : Tactic := fun stx => do
         let f_term ← Lean.PrettyPrinter.delab f
         let I_term ← Lean.PrettyPrinter.delab I
         let rm_term ← Lean.PrettyPrinter.delab rm
+        -- logInfo m!"f_term : {f_term}"
+        -- logInfo m!"I_term : {I_term}"
+        -- logInfo m!"rm_term : {rm_term}"
 
         let setSyntax ← mkSetSyntaxFromTerms argsTerms
 
@@ -1197,7 +1191,7 @@ def evalGroebnerNotMem : Tactic := fun stx => do
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
             simp
-            ideal
+            first | done | ideal
         ))
 
         evalTactic (← `(tactic|
@@ -1230,15 +1224,240 @@ def evalGroebnerNotMem : Tactic := fun stx => do
         evalTactic (← `(tactic|
           contradiction
         ))
+      | _ => throwError "Expect Ideal.span, but got {I}"
+
+    | _ => throwError "Goal must be of form `f ∈ Ideal.span S` or form of `f ∉ Ideal.span S`"
+
+
+def insertPolyToSetExpr {u v : Level} {σ : Q(Type u)} {R : Q(Type v)}
+    {r : Q(CommSemiring $R)}
+    (poly : Q(MvPolynomial $σ $R))
+    (set : Q(Set (MvPolynomial $σ $R))) : MetaM Q(Set (MvPolynomial $σ $R)) := do
+
+  return q(Insert.insert $poly $set)
+
+partial def appendPolyToSetExpr {u v : Level} {σ : Q(Type u)} {R : Q(Type v)}
+    {r : Q(CommSemiring $R)}
+    (poly : Q(MvPolynomial $σ $R))
+    (set : Q(Set (MvPolynomial $σ $R))) : MetaM Q(Set (MvPolynomial $σ $R)) := do
+
+  match set with
+  | ~q(∅) =>
+      return q(Insert.insert $poly ∅)
+
+  | ~q(Insert.insert $head $tail) =>
+      let newTail ← appendPolyToSetExpr (r := r) poly tail
+      return q(Insert.insert $head $newTail)
+
+  | _ =>
+      return q(Insert.insert $poly $set)
+
+
+syntax (name := radicalMembership) "radical_membership" : tactic
+@[tactic radicalMembership]
+def evalradicalMembership : Tactic := fun stx => do
+  let goal ← Lean.Elab.Tactic.getMainGoal
+  let t ← goal.getType
+  let t ← checkTypeQ t q(Prop)
+
+  match t with
+  | none => return
+  | some expr =>
+    match expr with
+    | ~q($f ∈ @Ideal.radical
+            (@MvPolynomial $σ $R $i)
+            $ring
+            (@Ideal.span
+              (@MvPolynomial $σ $R $i)
+              (@CommSemiring.toSemiring
+                 (@MvPolynomial $σ $R $i)
+                 $ring)
+              $I_gens)) =>
+      let f_str ←  parsePoly f
+      let I_gens_list ←  parseSet I_gens
 
 
 
-    | _ => throwError "Goal must be of form `f ∉ Ideal.span S`"
+      let n ← runSage (.radical f_str s!"{I_gens_list}")
+
+      let n_val : Nat := n.trim.toNat!
+      let n_expr := mkNatLit n_val
+      let n_term ← Lean.PrettyPrinter.delab n_expr
+
+
+      evalTactic (← `(tactic|
+          rw [Ideal.mem_radical_iff]
+        ))
+
+      evalTactic (← `(tactic|
+          use $n_term:term
+        ))
+
+      evalTactic (← `(tactic|
+          ideal_membership
+        ))
+
+      logInfo m!"{n}"
+
+      pure 0
+    -- | ~q(¬ ($f ∈ @Ideal.radical
+    --         (@MvPolynomial $σ $R $i)
+    --         $ring
+    --         $I_gens)) =>
+    | ~q(¬ ($f ∈ @Ideal.radical
+            (@MvPolynomial $σ $R $i)
+            $ring
+            (@Ideal.span
+              (@MvPolynomial $σ $R $i)
+              (@CommSemiring.toSemiring
+                  (@MvPolynomial $σ $R $i)
+                  $ring)
+              $I_gens))) =>
+
+      let f_term ← Lean.PrettyPrinter.delab f
+      let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
+
+      -- let _inst_R : Q(CommRing $R) ← synthInstanceQ q(CommRing $R)
+      let _inst_R ← synthInstanceQ q(CommRing (MvPolynomial $σ $R))
+
+      let one_sub_f_expr := q(((1 : MvPolynomial $σ $R) - $f : MvPolynomial $σ $R))
+      let one_sub_f_term : Term ← Lean.PrettyPrinter.delab one_sub_f_expr
+      let new_set_expr ← insertPolyToSetExpr one_sub_f_expr I_gens
+      let new_set_term : Term ← Lean.PrettyPrinter.delab new_set_expr
+      let I_gens_term : Term ← Lean.PrettyPrinter.delab I_gens
+      logInfo m!"[NEW SET TERM] : {new_set_term}"
+
+      let f_str ←  parsePoly f
+      let I_gens_list ←  parseSet I_gens
+
+      logInfo m!"{f_str}"
+      logInfo m!"{I_gens_list}"
+
+      evalTactic (← `(tactic|
+          by_contra h
+        ))
+      evalTactic (← `(tactic|
+          rw [Ideal.mem_radical_iff] at h
+        ))
+      evalTactic (← `(tactic|
+          rcases h with ⟨n, hn⟩
+        ))
+      evalTactic (← `(tactic|
+          have h₁: (1: $polyType) = ($f_term) ^ n + (1 - ($f_term)^n) := by
+            rw [add_sub_cancel]
+        ))
+      evalTactic (← `(tactic|
+          have h₂: ((1 : $polyType) - $f_term) ∣ ((1 : $polyType) - ($f_term)^n) := by
+            exact one_sub_dvd_one_sub_pow ($f_term) n
+        ))
+
+      -- evalTactic (← `(tactic|
+      --     have h₃: 1 ∈ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      --       rcases h₂ with ⟨p, hp⟩
+      --       rw [hp] at h₁
+      --       have l₁ : X 2 ^ n ∈ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      --         have t₁: Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) ≤ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      --           apply Ideal.span_mono
+      --           simp
+      --         exact t₁ hn
+      --       have l₂ : (1 - X 2) * p ∈ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      --         apply Ideal.mul_mem_right
+      --         have t₁: Ideal.span ({1-X 2} : Set (MvPolynomial (Fin 3) ℚ)) ≤ Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      --           apply Ideal.span_mono
+      --           simp
+      --         have t₂: (1 - X 2) ∈ Ideal.span ({1-X 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+      --           exact Ideal.mem_span_singleton_self (1 - X 2)
+      --         exact t₁ t₂
+      --       rw [h₁]
+      --       apply Ideal.add_mem _ l₁ l₂
+      --       rw [← h₁]
+      --       refine ⟨Ideal.span {1 - X 2, X 0, X 1}, ?_⟩
+      --       ext x
+      --       constructor
+      --       · intro h
+      --         simp at h
+      --         have l: ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) ⊆ (Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))) := by
+      --           exact Ideal.subset_span
+      --         exact h l
+      --       · intro h
+      --         simp
+      --         intro a
+      --         simp at h
+      --         exact h
+      --   ))
+
+      evalTactic (← `(tactic|
+          have h₃: 1 ∈ Ideal.span ($new_set_term : Set $polyType) := by
+            rcases h₂ with ⟨p, hp⟩
+            rw [hp] at h₁
+            have l₁ : ($f_term : $polyType) ^ n ∈ Ideal.span ($new_set_term : Set $polyType) := by
+              have t₁: Ideal.span ($I_gens_term : Set $polyType)
+              ≤ Ideal.span ($new_set_term : Set $polyType) := by
+                apply Ideal.span_mono
+                simp
+              exact t₁ hn
+            have l₂ : ((1 : $polyType) - ($f_term : $polyType)) * p
+            ∈ Ideal.span ($new_set_term : Set $polyType) := by
+              apply Ideal.mul_mem_right
+              have t₁: Ideal.span ({(1 : $polyType) - ($f_term : $polyType)} : Set $polyType)
+               ≤ Ideal.span ($new_set_term : Set $polyType) := by
+                apply Ideal.span_mono
+                simp
+              have t₂: ((1 : $polyType) - ($f_term : $polyType))
+               ∈ Ideal.span ({(1 : $polyType) - ($f_term : $polyType)} : Set $polyType) := by
+                exact Ideal.mem_span_singleton_self (1 - $f_term)
+              exact t₁ t₂
+            rw [h₁]
+            apply Ideal.add_mem _ l₁ l₂
+            rw [← h₁]
+            refine ⟨Ideal.span ($new_set_term), ?_⟩
+            ext x
+            constructor
+            · intro h
+              simp at h
+              have l: ($new_set_term : Set $polyType) ⊆
+              (Ideal.span ($new_set_term : Set $polyType)) := by
+                exact Ideal.subset_span
+              exact h l
+            · intro h
+              simp
+              intro a
+              simp at h
+              exact h
+        ))
+
+      evalTactic (← `(tactic|
+          have h₄ : lex.IsRemainder (1: $polyType)
+            ($new_set_term : Set $polyType) 1 := by
+            remainder
+        ))
+
+      evalTactic (← `(tactic|
+          have h₅ : letI basis := ($new_set_term : Set $polyType)
+          lex.IsGroebnerBasis basis (Ideal.span basis) := by
+            basis
+        ))
+
+      evalTactic (← `(tactic|
+          have h₆ : (1: $polyType) = 0 := by
+            exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h₅ h₄).mpr h₃
+        ))
+
+      evalTactic (← `(tactic|
+          simp at h₆
+        ))
+
+
+    | _ => throwError "Goal must be of form `f ∈ (Ideal.span S).
+    radical` or form of `f ∉ (Ideal.span S).radical`"
+
 
 
 
 end IsRemainder
 
+
+open MvPolynomial
 
 
 namespace Mathlib.Tactic.IsGroebner

@@ -60,15 +60,6 @@ def find_linear_representation(poly_list_to_represent, ideal_basis, ideal_name, 
             coeffs = poly.lift(I_basis)
             results.append(coeffs)
 
-            # representation_terms = []
-            # for coeff, basis_poly in zip(coeffs, ideal_basis):
-            #     if not coeff.is_zero():
-            #         representation_terms.append(f"({str(coeff)}) * ({str(basis_poly)})")
-            
-            # representation = " + ".join(representation_terms)
-
-            # results.append (representation if representation else 0)
-
         except Exception as e:
 
             print(f"\n[Error In Find Representation] : {e}")

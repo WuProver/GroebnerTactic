@@ -88,6 +88,9 @@ def polynomial_division_multivariate(f, divisors, ring):
 
 def s_polynomial(f, g):
 
+    if f == _sage_const_0  or g == _sage_const_0 :
+        return _sage_const_0 
+
     LM_f = f.lm() 
     LM_g = g.lm()
     

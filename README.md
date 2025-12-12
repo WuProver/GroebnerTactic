@@ -1,6 +1,11 @@
 # GroebnerTac
 
 ## Introduction
+### Lean To Sage
+
+### Sage To Lean
+
+### Tactic
 
 
 ## Build
@@ -15,3 +20,4 @@ lake build
 ```
 
 To utilize the full functionality of this project, you need to install SageMath, please follow the official [SageMath installation instructions](https://doc.sagemath.org/html/en/installation/index.html).
+

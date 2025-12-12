@@ -28,9 +28,10 @@ variable {σ : Type*} (m : MonomialOrder σ)
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-  -- remainder?
-   remainder[0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2, 0 + C ↑(↑1 / ↑1) * X 2 ^ 3,
-       0 + C ↑(↑1 / ↑1) * X 3 ^ 4]
+      remainder[0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2, 0 + C ↑(↑1 / ↑1) * X 2 ^ 3,
+        0 + C ↑(↑1 / ↑1) * X 3 ^ 4]
+  -- -- remainder?
+  --  remainder[X 0, X 1^2, X 2^3,X 3^4]
 
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
