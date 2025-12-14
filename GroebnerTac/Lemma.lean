@@ -2,7 +2,7 @@ import Mathlib
 
 import Groebner.Basic
 import Groebner.List
--- import Groebner.Tactic
+import GroebnerTac.Tactic
 
 import MonomialOrderedPolynomial.TreeRepr
 import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
@@ -294,13 +294,13 @@ example :
   rw [Ideal.map_span] at h
   rw [← Ideal.span_union] at h
   rw [Set.image_singleton, Set.singleton_union] at h
-  simp only [rename_X, Fin.castSucc_zero, Fin.castSucc_one, t, Fin.val_last] at h
+  simp only [rename_X,  t] at h
   dsimp [g, t] at h
   simp at h
-  
-  -- have h_gb : letI basis := ({X 0 + X 1, 1 - X 3* X 0} : Set <| MvPolynomial (Fin 4) ℚ)
-  --   lex.IsGroebnerBasis basis (Ideal.span basis ) := by
-  --     basis
-  sorry
+  have h₁ : 1 ∉ Ideal.span  ({X 0 + X 1, 1 - X (Fin.last 3) * (rename Fin.castSucc) (X 0)} : Set <| MvPolynomial (Fin 4) ℚ) := by
+    simp
+    ideal_membership
+  simp at h₁
+  exact h₁ h
 
 end Ideal

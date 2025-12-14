@@ -77,8 +77,7 @@ def polynomial_division_multivariate(f, divisors, ring):
 
 def convert_poly_to_json(poly, vars_list):
     terms_list = []
-    # print(f"poly {type(poly)}")
-
+    
     ring_gens = poly.parent().gens()
 
     if poly.is_zero():
@@ -90,11 +89,9 @@ def convert_poly_to_json(poly, vars_list):
         for exp_tuple, coeff in poly.dict().items():
 
             if hasattr(coeff, 'numerator') and hasattr(coeff, 'denominator'):
-
                 coeff_num = int(coeff.numerator())
                 coeff_den = int(coeff.denominator())
             else:
-    
                 coeff_num = int(coeff)
                 coeff_den = 1
 
@@ -103,19 +100,21 @@ def convert_poly_to_json(poly, vars_list):
             for i, power in enumerate(exp_tuple):
                 if power != 0:
 
-                    current_var = ring_gens[i]
-                    
-                    try:
-                        target_index = vars_list.index(current_var)
-                    except ValueError:
-                
-                        try:
-                            target_index = vars_list.index(str(current_var))
-                        except ValueError:
-                        
-                            raise ValueError(f"Variable {current_var} not found in vars_list provided.")
+                    current_var_obj = ring_gens[i]
+                    var_name = str(current_var_obj)
 
-                    exponent_pairs.append([int(target_index), int(power)])
+                    match = re.search(r'_(\d+)$', var_name)
+                    if match:
+                        real_index = int(match.group(1))
+                    else:
+                        try:
+                            real_index = vars_list.index(var_name)
+                        except ValueError:
+                             raise ValueError(f"Variable {var_name} not found.")
+
+                    exponent_pairs.append([real_index, int(power)])
+
+            exponent_pairs.sort(key=lambda x: x[0])
 
             terms_list.append({
                 "c": [coeff_num, coeff_den],
@@ -123,6 +122,54 @@ def convert_poly_to_json(poly, vars_list):
             })
 
     return terms_list
+# def convert_poly_to_json(poly, vars_list):
+#     terms_list = []
+#     # print(f"poly {type(poly)}")
+
+#     ring_gens = poly.parent().gens()
+
+#     if poly.is_zero():
+#         terms_list.append({
+#             "c": [int(0), int(1)], 
+#             "e": [] 
+#         })
+#     else:
+#         for exp_tuple, coeff in poly.dict().items():
+
+#             if hasattr(coeff, 'numerator') and hasattr(coeff, 'denominator'):
+
+#                 coeff_num = int(coeff.numerator())
+#                 coeff_den = int(coeff.denominator())
+#             else:
+    
+#                 coeff_num = int(coeff)
+#                 coeff_den = 1
+
+#             exponent_pairs = []
+            
+#             for i, power in enumerate(exp_tuple):
+#                 if power != 0:
+
+#                     current_var = ring_gens[i]
+                    
+#                     try:
+#                         target_index = vars_list.index(current_var)
+#                     except ValueError:
+                
+#                         try:
+#                             target_index = vars_list.index(str(current_var))
+#                         except ValueError:
+                        
+#                             raise ValueError(f"Variable {current_var} not found in vars_list provided.")
+
+#                     exponent_pairs.append([int(target_index), int(power)])
+
+#             terms_list.append({
+#                 "c": [coeff_num, coeff_den],
+#                 "e": exponent_pairs
+#             })
+
+#     return terms_list
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "remainder")
@@ -169,6 +216,6 @@ if __name__ == "__main__":
         print(json.dumps(json_output))
 
     except Exception as e:
-        print(f"\n[!!! Error !!!] : {e}")
+        print(f"\n[!!! Remainder Error !!!] : {e}")
         import traceback
         traceback.print_exc()

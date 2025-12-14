@@ -10,8 +10,10 @@ import io
 import contextlib
 import json
 
+from sage.all import PolynomialRing, QQ
+
 def extract_vars(str1, str2):
-    combined_str = str1 + str2
+    combined_str = str1 + " " + str2
 
     tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', combined_str)
 
@@ -21,6 +23,10 @@ def extract_vars(str1, str2):
         if var not in seen:
             seen.add(var)
             ordered_vars.append(var)
+    def natural_keys(text):
+       return [int(c) if c.isdigit() else c for c in re.split(r'(\d+)', text)]
+
+    ordered_vars.sort(key=natural_keys)
 
     return ordered_vars
 
@@ -68,20 +74,68 @@ def find_linear_representation(poly_list_to_represent, ideal_basis, ideal_name, 
 
     return results
 
+# def convert_polys_to_json(polys, vars_list):
+#     json_polys = []
+#     num_vars = len(vars_list)
+    
+#     var_to_index = {var: i for i, var in enumerate(vars_list)}
+
+#     for q_poly in polys:
+#         if isinstance(q_poly, str):
+#             q_poly = ring(q_poly)
+#         else:
+#             q_poly = q_poly
+#         terms_list = []
+        
+#         # parse 0-polynomial
+#         if q_poly.is_zero():
+#             terms_list.append({
+#                 "c": [int(0), int(1)], 
+#                 "e": [] 
+#             })
+#         else:
+#             for exp_tuple, coeff in q_poly.dict().items():
+#                 # process coefficient
+#                 if coeff.parent() is QQ:
+#                     # process rational number
+#                     coeff_num = int(coeff.numerator())
+#                     coeff_den = int(coeff.denominator())
+#                 elif coeff.is_integer():
+#                     # process int number
+#                     coeff_num = int(coeff)
+#                     coeff_den = 1
+#                 else:
+#                     coeff_num = int(coeff)
+#                     coeff_den = 1
+
+                
+#                 # process exponent
+#                 exponent_pairs = []
+#                 for i, power in enumerate(exp_tuple):
+#                     if power != 0:
+#                         exponent_pairs.append([int(i-1), int(power)])
+
+#                 terms_list.append({
+#                     "c": [coeff_num, coeff_den],
+#                     "e": exponent_pairs
+#                 })
+
+#         json_polys.append(terms_list)
+
+#     return json_polys
+
 def convert_polys_to_json(polys, vars_list):
     json_polys = []
-    num_vars = len(vars_list)
     
-    var_to_index = {var: i for i, var in enumerate(vars_list)}
+    if polys and hasattr(polys[_sage_const_0 ], 'parent'):
+        ring_gens = polys[_sage_const_0 ].parent().gens()
+    else:
+        ring_gens = []
 
     for q_poly in polys:
-        if isinstance(q_poly, str):
-            q_poly = ring(q_poly)
-        else:
-            q_poly = q_poly
+        
         terms_list = []
         
-        # parse 0-polynomial
         if q_poly.is_zero():
             terms_list.append({
                 "c": [int(_sage_const_0 ), int(_sage_const_1 )], 
@@ -89,25 +143,32 @@ def convert_polys_to_json(polys, vars_list):
             })
         else:
             for exp_tuple, coeff in q_poly.dict().items():
-                # process coefficient
-                if coeff.parent() is QQ:
-                    # process rational number
+                
+                if hasattr(coeff, 'numerator') and hasattr(coeff, 'denominator'):
                     coeff_num = int(coeff.numerator())
                     coeff_den = int(coeff.denominator())
-                elif coeff.is_integer():
-                    # process int number
-                    coeff_num = int(coeff)
-                    coeff_den = _sage_const_1 
                 else:
                     coeff_num = int(coeff)
                     coeff_den = _sage_const_1 
 
-                
-                # process exponent
                 exponent_pairs = []
                 for i, power in enumerate(exp_tuple):
                     if power != _sage_const_0 :
-                        exponent_pairs.append([int(i-_sage_const_1 ), int(power)])
+                        
+                        current_var_name = str(ring_gens[i])
+                        
+                        match = re.search(r'_(\d+)$', current_var_name)
+                        if match:
+                            real_index = int(match.group(_sage_const_1 ))
+                        else:
+                            try:
+                                real_index = vars_list.index(current_var_name)
+                            except:
+                                real_index = i
+
+                        exponent_pairs.append([real_index, int(power)])
+  
+                exponent_pairs.sort(key=lambda x: x[_sage_const_0 ])
 
                 terms_list.append({
                     "c": [coeff_num, coeff_den],
@@ -127,6 +188,9 @@ if __name__ == "__main__":
     parser.add_argument('-J', '--generator2', type = str, required=True)
 
     args = parser.parse_args()
+
+    # print(f"I Generator {args.I}")
+    # print(f"J Generator {args.J}")
 
     try:
         # Extract variables
@@ -201,7 +265,7 @@ if __name__ == "__main__":
 
         
     except Exception as e:
-        print(f"\n[!!! Error !!!] : {e}")
+        print(f"\n[!!! Ideal Error !!!] : {e}")
         import traceback
         traceback.print_exc()
 

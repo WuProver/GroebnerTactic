@@ -141,6 +141,6 @@ if __name__ == "__main__":
         print(json.dumps(json_output))
         
     except Exception as e:
-        sys.stderr.write(f"\n[!!! Error !!!] : {e}\n")
+        sys.stderr.write(f"\n[!!! Intersection Error !!!] : {e}\n")
         import traceback
         traceback.print_exc(file=sys.stderr)

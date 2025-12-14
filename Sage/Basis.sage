@@ -10,19 +10,33 @@ from sage.all import PolynomialRing, QQ, lcm
 from fractions import Fraction
 from itertools import combinations, product
 
+# def extract_vars(set_str):
+
+#     tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', set_str)
+
+#     seen = set()
+#     ordered_vars = []
+#     for var in tokens:
+#         if var not in seen:
+#             seen.add(var)
+#             ordered_vars.append(var)
+
+#     return ordered_vars
+
 def extract_vars(set_str):
-
     tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', set_str)
-
+    
     seen = set()
     ordered_vars = []
     for var in tokens:
         if var not in seen:
             seen.add(var)
             ordered_vars.append(var)
-
+    
+    # add order sort
+    ordered_vars.sort() 
+    
     return ordered_vars
-
 
 def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
 
@@ -194,7 +208,10 @@ if __name__ == "__main__":
             f_j = ring(f_j)
             
             s_poly = s_polynomial(f_i, f_j)
+            # print(f"[SPoly]\n{s_poly}")
             quotients, remainder = polynomial_division_multivariate(s_poly, set_list, ring)
+            # print(f"[f_i]\n {f_i}\n")
+            # print(f"[f_j]\n {f_j}\n")
             # print(f"[QUOTIENTS]\n {quotients}")
             # print(f"[REMAINDER]\n {quotients}")
             json_output = convert_quotient_to_json(quotients, vars_list)
@@ -203,6 +220,6 @@ if __name__ == "__main__":
       
         print(json.dumps(results))
     except Exception as e:
-        print(f"\n[!!! Error !!!] : {e}")
+        print(f"\n[!!! Basis Error !!!] : {e}")
         import traceback
         traceback.print_exc()

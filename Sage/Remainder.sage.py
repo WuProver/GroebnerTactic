@@ -16,7 +16,7 @@ from fractions import Fraction
 
 
 def extract_vars(poly_str, divisors_str):
-    combined_str = poly_str + divisors_str
+    combined_str = poly_str + " " + divisors_str
 
     tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', combined_str)
 
@@ -26,6 +26,8 @@ def extract_vars(poly_str, divisors_str):
         if var not in seen:
             seen.add(var)
             ordered_vars.append(var)
+    
+    ordered_vars.sort()
 
     return ordered_vars
 
@@ -190,7 +192,7 @@ if __name__ == "__main__":
         print(json.dumps(json_output))
 
     except Exception as e:
-        print(f"\n[!!! Error !!!] : {e}")
+        print(f"\n[!!! Remainder Error !!!] : {e}")
         import traceback
         traceback.print_exc()
 

@@ -39,6 +39,11 @@ example :
     remainder [X 0, X 1^2, X 2^3, X 3^4]
 
 example :
+    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
+      {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
+    remainder
+
+example :
     lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
     remainder
@@ -65,11 +70,6 @@ example :
     basis
 
 example :
-    letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
-    lex.IsGroebnerBasis basis (Ideal.span basis) := by
-    basis
-
-example :
     letI basis := ({X 0 ^ 4 - X 1} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
@@ -77,8 +77,13 @@ example :
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
     Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-  ideal
+   ideal
 
+
+example :
+  Ideal.span ({X 0 + X 1^2, X 1 }) =
+    Ideal.span ({X 0, X 1 } : Set (MvPolynomial (Fin 3) ℚ)) := by
+   ideal
 
 
 

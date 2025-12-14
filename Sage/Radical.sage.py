@@ -117,6 +117,6 @@ if __name__ == "__main__":
         print(result)
         
     except Exception as e:
-        sys.stderr.write(f"\n[!!! Error !!!] : {e}\n")
+        sys.stderr.write(f"\n[!!! Radical Error !!!] : {e}\n")
         sys.exit(_sage_const_1 )
 
