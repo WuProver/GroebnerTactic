@@ -4,6 +4,7 @@
 from sage.all_cmdline import *   # import sage library
 
 _sage_const_0 = Integer(0); _sage_const_1 = Integer(1); _sage_const_2 = Integer(2)# This is a file used for tactic `basis`
+# 
 import argparse
 import ast
 import re
@@ -181,7 +182,8 @@ if __name__ == "__main__":
         vars_list = extract_vars(args.set)
 
         if not vars_list:
-            raise ValueError("We can not find any variable in the input polynomial")
+            vars_list = ['x']
+            # raise ValueError("We can not find any variable in the input polynomial")
 
         # make the polynomial ring
         ring = create_polynomial_ring(vars_list)

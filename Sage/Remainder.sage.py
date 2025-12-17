@@ -157,7 +157,8 @@ if __name__ == "__main__":
         vars_list = extract_vars(args.polynomial, args.divisors)
 
         if not vars_list:
-            raise ValueError("We can not find any variable in the input polynomial")
+            vars_list = ['x']
+            # raise ValueError("We can not find any variable in the input polynomial")
 
         # make the polynomial ring
         ring = create_polynomial_ring(vars_list)
