@@ -284,6 +284,7 @@ theorem Rabinovich_method'
     exact Ideal.mul_mem_left I (↑c) g_val.2
 
 
+
 example :
   X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   let g : Fin 3 → Fin 4 := Fin.castSucc
@@ -303,4 +304,115 @@ example :
   simp at h₁
   exact h₁ h
 
+variable {n : ℕ} {R : Type*} [CommRing R]
+variable (g : Fin n → Fin (n + 1))
+
+variable (S : Set (MvPolynomial (Fin n) R))
+variable (p : MvPolynomial (Fin (n + 1)) R)
+
+
+theorem span_image_set_union_eq_span_insert :
+  Ideal.span ((rename g) '' S ∪ {p}) =
+  Ideal.span (insert p ((rename g) '' S)) := by
+  simp only [Set.union_singleton]
+
+example :
+  X 2 + 1 ∉ (Ideal.span ({X 0, X 1, X 2} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  let g : Fin 3 → Fin 4 := Fin.castSucc
+  let t : Fin 4 := Fin.last 3
+  by_contra h
+  rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
+  rw [Ideal.map_span] at h
+  rw [← Ideal.span_union] at h
+  simp_rw [Set.image_insert_eq, Set.union_singleton] at h
+  simp only [rename_X,  t] at h
+  dsimp [g, t] at h
+  simp only [Fin.isValue, map_add, rename_X, Fin.reduceCastSucc, map_one] at h
+  simp_rw [Set.image_singleton] at h
+  simp at h
+  sorry
+
+example :
+  X 2 ∉ (Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  let g : Fin 3 → Fin 4 := Fin.castSucc
+  let t : Fin 4 := Fin.last 3
+
+  by_contra h
+  rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
+  rw [Ideal.map_span] at h
+  rw [← Ideal.span_union] at h
+  simp_rw [Set.image_insert_eq, Set.image_singleton ,Set.union_singleton] at h
+  dsimp [g, t] at h
+  simp only [Fin.isValue, rename_X, Fin.reduceCastSucc, Fin.castSucc_zero, Set.image_singleton,
+    Fin.castSucc_one] at h
+  have h₁ : 1 ∉ Ideal.span  ({X 0, X 1, 1 - X (Fin.last 3) * (rename Fin.castSucc) (X 0)} : Set <| MvPolynomial (Fin 4) ℚ) := by
+    simp
+    sorry
+    -- ideal_membership
+  simp at h₁
+  sorry
+  -- exact h₁ h
+
+
+example :
+  X 2 + 1 ∉ (Ideal.span ({X 0, X 1, X 2} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  let g : Fin 3 → Fin 4 := Fin.castSucc
+  let t : Fin 4 := Fin.last 3
+
+  by_contra h
+  rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
+  rw [Ideal.map_span] at h
+  rw [← Ideal.span_union] at h
+  conv at h =>
+      repeat rw [Set.image_insert_eq]
+      try rw [Set.image_singleton]
+      try rw [Set.union_singleton]
+
+  dsimp [g, t] at h
+  simp only [Fin.isValue, map_add, rename_X, Fin.reduceCastSucc, map_one,
+              Fin.castSucc_zero, Fin.castSucc_one, Fin.castSucc_succ] at h
+  sorry
+
+example :
+  X 2 ∉ (Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  let g : Fin 3 → Fin 4 := Fin.castSucc
+  let t : Fin 4 := Fin.last 3
+
+  by_contra h
+  rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
+  rw [Ideal.map_span] at h
+  rw [← Ideal.span_union] at h
+  conv at h =>
+      repeat rw [Set.image_insert_eq]
+      try rw [Set.image_singleton]
+      try rw [Set.union_singleton]
+
+  dsimp [g, t] at h
+  simp only [Fin.isValue, map_add, rename_X, Fin.reduceCastSucc, map_one,
+              Fin.castSucc_zero, Fin.castSucc_one, Fin.castSucc_succ] at h
+  sorry
+
+
+example :
+  X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  let g : Fin 3 → Fin 4 := Fin.castSucc
+  let t : Fin 4 := Fin.last 3
+
+  by_contra h
+  rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
+  rw [Ideal.map_span] at h
+  rw [← Ideal.span_union] at h
+  conv at h =>
+      repeat rw [Set.image_insert_eq]
+      try rw [Set.image_singleton]
+      try rw [Set.union_singleton]
+
+  dsimp [g, t] at h
+  simp only [Fin.isValue, map_add, rename_X, Fin.reduceCastSucc, map_one,
+              Fin.castSucc_zero, Fin.castSucc_one, Fin.castSucc_succ] at h
+  
+
+  sorry
+
+#check  ({X 0} :Set (MvPolynomial (Fin 2) ℚ))
 end Ideal

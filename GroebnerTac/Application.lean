@@ -56,8 +56,15 @@ example : 1 ∉ Ideal.span  ({X 1*X 3 + 1, X 0 + X 1} : Set <| MvPolynomial (Fin
 example : 1 ∉ Ideal.span  ({X 0 + X 1, 1 - X 0*X 3} : Set <| MvPolynomial (Fin 4) ℚ) := by
    ideal_membership
 
--- example : 1 ∉ Ideal.span  ({X 1*X 3 + 1, X 0 + X 1} : Set <| MvPolynomial (Fin 4) ℚ) := by
---    ideal_membership
+example : 1 ∉ Ideal.span  ({X 1*X 3 + 1, X 0 + X 1} : Set <| MvPolynomial (Fin 4) ℚ) := by
+   ideal_membership
+
+example : 1 ∈ Ideal.span ({X 0, X 1, 1 - X 3 * X 0} : Set <| MvPolynomial (Fin 4) ℚ) := by
+
+  ideal_membership
+
+-- example : 1
+
 
 
 /-Radical Ideal Membership problem-/
@@ -65,25 +72,14 @@ example :
   X 0 * X 1 ∈ (Ideal.span ({X 0 ^ 5, X 1 ^ 5} : Set (MvPolynomial (Fin 3) ℚ))).radical:= by
     radical_membership
 
-
 example :
   X 2 ∉ (Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   radical_membership
 
 
 example :
-  X 1 ∉ (Ideal.span ({X 0} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   radical_membership
-
-
-
--- example :
---   1 ∉ (Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ))).radical := by
---   radical_membership
-
--- example :
---   X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
---   radical_membership
 
 
 

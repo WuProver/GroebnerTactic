@@ -22,9 +22,33 @@ variable {σ : Type*} (m : MonomialOrder σ)
 variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
 
 
-
 example : 1 ∉ Ideal.span  ({X 0 + X 1, 1 - X 0*X 3} : Set <| MvPolynomial (Fin 4) ℚ) := by
    ideal_membership
+
+-- example : 1 ∉ Ideal.span ({(1 - (X 3 * X 1)), X 0} : Set <| MvPolynomial (Fin 4) ℚ) := by
+--    ideal_membership
+
+example : (X 1 - C 2 : MvPolynomial (Fin 2) ℚ) = (X 1 - 2 : MvPolynomial (Fin 2) ℚ) := by
+  exact rfl
+
+example : lex.IsGroebnerBasis ({0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 1 * X 3 ^ 1 + C ↑(↑(-2) / ↑1)}
+ : Set (MvPolynomial (Fin 4) ℚ)) (Ideal.span {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 1 * X 3 ^ 1 + C ↑(↑(-2) / ↑1)}) := by
+  simp only [_root_.ne_eq, _root_.one_ne_zero, _root_.not_false_eq_true, _root_.div_self, MvPolynomial.C_1, Fin.isValue, _root_.pow_one, _root_.one_mul,
+    _root_.zero_add, _root_.div_one, MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
+
+
+--   norm_num
+
+--   conv =>
+--     rw [← sub_eq_add_neg]
+  basis
+
+example : lex.IsGroebnerBasis ({X 0, X 1 * X 3 - C ↑(↑1 / ↑2)}
+ : Set (MvPolynomial (Fin 4) ℚ)) (Ideal.span {X 0, X 1 * X 3 - C ↑(↑1 / ↑2)}) := by
+  simp only [← sub_eq_add_neg]
+  basis
+
+
 
 -- example : 1 ∉ Ideal.span  ({X 1*X 3 + 1, X 0 + X 1} : Set <| MvPolynomial (Fin 4) ℚ) := by
 --   --  ideal_membership

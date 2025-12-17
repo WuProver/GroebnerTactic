@@ -275,7 +275,7 @@ def mkPolyListTerm (jsonInput : Json) : TacticM Term := do
   pure polyListExpr
 
 /-
-In this section, we define the some functions to parse `Expr` in Lean
+In this section, we define some functions to parse `Expr` in Lean
 -/
 
 /-`parsePoly` parses a `MvPolynomial σ R` expression into a `String`-/
@@ -315,6 +315,22 @@ partial def parsePoly {u v: Lean.Level}
       | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
       | _ => pure s!"X_{idx}"
 
+  | ~q(MvPolynomial.C $val) =>
+      let r ← Mathlib.Meta.NormNum.derive val
+      pure s!"{r.toRat.get!}"
+    -- match val with
+    -- | ~q(@HDiv.hDiv («$R»)
+    --   («$R») («$R») $commring $a $b) =>
+    --   -- pure s!"{a}/{b}"
+    --   match a, b with
+    --   | ~q(@OfNat.ofNat _ _ $n1),  ~q(@OfNat.ofNat _ _ $n2) =>
+    --     match n1, n2 with
+    --     | ~q(@Rat.instOfNat $n1),  ~q(@Rat.instOfNat $n2)
+    --       pure s!"{n1}/{n2}"
+    --     | _ =>
+    --       pure s!"{n1}/{n2}"
+    -- | _ =>
+
   | ~q(@OfNat.ofNat _ $b $n) =>
     logInfo "go to this branch"
     pure s!"{b}"
@@ -323,6 +339,12 @@ partial def parsePoly {u v: Lean.Level}
     pure s!"{e}"
 
 #eval parsePoly q(1: MvPolynomial Nat Nat)
+#eval parsePoly q(X 1 - C (1 / 2): MvPolynomial (Fin 2) ℚ)
+#eval parsePoly q(X 1 - C (1): MvPolynomial (Fin 2) ℚ)
+
+run_meta do
+  let r ← Mathlib.Meta.NormNum.derive q(1 + 3*2 + 3/4 : ℚ)
+  Lean.logInfo <| repr r.toRat
 
 /-`parseSet` parses a `Set (MvPolynomial σ R)` expression into a `List String`-/
 partial def parseSet {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommSemiring $R)}
@@ -369,7 +391,6 @@ def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit :
       all_goals decide +kernel
   ))
 
-  -- [Common Step] Goal 2: Prove the degree condition
   evalTactic (← `(tactic|
     focus
       intro i
@@ -773,11 +794,9 @@ elab "remainder_neq_zero" : tactic => do
       let get : Q((xs : List (MvPolynomial ℕ ℚ)) ->
         Fin xs.length -> MvPolynomial ℕ ℚ) := q(List.get)
       let xs : Q(List (MvPolynomial ℕ ℚ)) := liftListQ xs
-      -- logInfo m!"[DEBUG] {xs}"
       let xs_get := q($get $xs)
-      -- logInfo m!"[DEBUG] {xs_get}"
+
       let xs_get <- Lean.PrettyPrinter.delab xs_get
-      -- logInfo m!"[CHECK {xs_get}]"
       let runUse := fun x => do
         Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
 
@@ -831,6 +850,7 @@ elab "remainder_neq_zero" : tactic => do
 
 elab "basis" : tactic  => do
   let goal ← Lean.Elab.Tactic.getMainGoal
+  logInfo m!"[DEBUG `basis` Goal] : {goal}"
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
   match t with
@@ -1103,7 +1123,6 @@ def evalGroebnerMembership : Tactic := fun stx => do
       | ~q(Ideal.span $I_gens) =>
         let I_gens_list ←  parseSet I_gens
 
-        logInfo m!"{I_gens_list}"
         let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
 
         let gb := Json.parse s!"{sage_gb}"
@@ -1125,10 +1144,15 @@ def evalGroebnerMembership : Tactic := fun stx => do
         let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
 
-
         evalTactic (← `(tactic|
+
           have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
-            simp
+            simp only [_root_.ne_eq, _root_.one_ne_zero,
+            _root_.not_false_eq_true,
+            _root_.div_self, MvPolynomial.C_1,
+            Fin.isValue, _root_.pow_one, _root_.one_mul,
+            _root_.zero_add, _root_.div_one,
+            MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
             basis
         ))
 
@@ -1163,8 +1187,9 @@ def evalGroebnerMembership : Tactic := fun stx => do
 
         let I_gens_list ←  parseSet I_gens
 
+        logInfo m!"[DBEUG I GENS LIST]{I_gens_list}"
         let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
-        -- logInfo m!"[GB SAGE RESULT] : {sage_gb}"
+        logInfo m!"[GB SAGE RESULT] : {sage_gb}"
         let gb := Json.parse s!"{sage_gb}"
         let gb ← parseJson gb
         let Except.ok gb_arr := gb.getArr? | failure
@@ -1185,17 +1210,22 @@ def evalGroebnerMembership : Tactic := fun stx => do
         let f_term ← Lean.PrettyPrinter.delab f
         let I_term ← Lean.PrettyPrinter.delab I
         let rm_term ← Lean.PrettyPrinter.delab rm
-        -- logInfo m!"f_term : {f_term}"
-        -- logInfo m!"I_term : {I_term}"
-        -- logInfo m!"rm_term : {rm_term}"
+        logInfo m!"[DEBUG f_term] : {f_term}"
+        logInfo m!"[DEBUG I_term] : {I_term}"
+        logInfo m!"[DEBUG rm_term] : {rm_term}"
 
         let setSyntax ← mkSetSyntaxFromTerms argsTerms
 
+        logInfo m!"[DEBUG `setSyntax`] : {setSyntax}"
+
         let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
+        logInfo m!"[DEBUG `polyType`] : {polyType}"
         evalTactic (← `(tactic|
           have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
             simp
+            -- conv =>
+            --   rw [← sub_eq_add_neg]
             basis
         ))
 
@@ -1482,16 +1512,6 @@ def evalradicalMembership : Tactic := fun stx => do
 
       pure 0
 
-    -- | ~q(¬ ($f ∈ @Ideal.radical
-    --         (@MvPolynomial $σ $R $i)
-    --         $ring
-    --         (@Ideal.span
-    --           (@MvPolynomial $σ $R $i)
-    --           (@CommSemiring.toSemiring
-    --               (@MvPolynomial $σ $R $i)
-    --               $ring)
-    --           $I_gens))) =>
-
     | ~q(¬ ($f ∈ @Ideal.radical
           (@MvPolynomial (Fin $n) $R $i)
           $ring
@@ -1518,8 +1538,6 @@ def evalradicalMembership : Tactic := fun stx => do
 
       let one_sub_tf_term : Term ← Lean.PrettyPrinter.delab one_sub_tf_expr
 
-      logInfo m!"{one_sub_tf_term}"
-
       let I_gens_lifted ← liftPolySet n R i I_gens
       let new_set_expr ← @insertPolyToSetExpr
           Level.zero
@@ -1532,8 +1550,7 @@ def evalradicalMembership : Tactic := fun stx => do
 
       let new_set_term : Term ← Lean.PrettyPrinter.delab new_set_expr
 
-      logInfo m!"[NEW SET TERM] : {new_set_term}"
-
+      logInfo m!"[DEBUG NEW SET TERM] : {new_set_term} "
 
       evalTactic (← `(tactic|
       let g : Fin $n_term → Fin ($n_term + 1) := Fin.castSucc
@@ -1548,7 +1565,7 @@ def evalradicalMembership : Tactic := fun stx => do
       ))
 
       evalTactic (← `(tactic|
-      rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
+      rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective $n_term)] at h
       ))
 
       evalTactic (← `(tactic|
@@ -1559,12 +1576,19 @@ def evalradicalMembership : Tactic := fun stx => do
       rw [← Ideal.span_union] at h
       ))
 
-      evalTactic (← `(tactic|
-      rw [Set.image_singleton, Set.singleton_union] at h
-      ))
+      -- evalTactic (← `(tactic|
+      -- rw [Set.image_singleton, Set.singleton_union] at h
+      -- ))
+
+      -- evalTactic (← `(tactic|
+      -- simp only [rename_X,  t] at h
+      -- ))
 
       evalTactic (← `(tactic|
-      simp only [rename_X,  t] at h
+      conv at h =>
+        repeat rw [Set.image_insert_eq]
+        try rw [Set.image_singleton]
+        try rw [Set.union_singleton]
       ))
 
       evalTactic (← `(tactic|
@@ -1572,11 +1596,16 @@ def evalradicalMembership : Tactic := fun stx => do
       ))
 
       evalTactic (← `(tactic|
-      simp at h
+      simp only [Fin.isValue, map_add, rename_X, Fin.reduceCastSucc, map_one,
+              Fin.castSucc_zero, Fin.castSucc_one, Fin.castSucc_succ] at h
       ))
 
       evalTactic (← `(tactic|
-      have h₁ : 1 ∉ Ideal.span  ({X 0 + X 1, $one_sub_tf_term} : Set <| MvPolynomial (Fin 4) ℚ) := by
+      have h₁ : 1 ∉ Ideal.span  ($new_set_term : Set <| MvPolynomial (Fin ($n_term + 1)) ℚ) := by
+        conv =>
+          repeat rw [Set.image_insert_eq]
+          try rw [Set.image_singleton]
+          try rw [Set.union_singleton]
         simp
         ideal_membership
       ))
@@ -1601,9 +1630,11 @@ end IsRemainder
 
 open MvPolynomial
 
-example :
-  X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
-  radical_membership
+-- example :
+--   X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+--   radical_membership
+
+
 
 namespace Mathlib.Tactic.IsGroebner
 

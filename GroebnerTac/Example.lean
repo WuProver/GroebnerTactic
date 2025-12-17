@@ -75,10 +75,17 @@ example :
       basis
 
 example :
+    letI basis := ({X 0} : Set <| MvPolynomial (Fin 3) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span basis) := by
+    basis
+
+example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
     Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-   ideal
+    ideal
 
+--- ⟨f1, f2, .., fn⟩ -> groebner basis ⟨g1, .., gm⟩
+--- IsGroebnerBasis ⟨g1, .., gm⟩ Ideal.span ⟨f1, f2, .., fn⟩
 
 example :
   Ideal.span ({X 0 + X 1^2, X 1 }) =

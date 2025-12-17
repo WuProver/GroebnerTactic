@@ -171,6 +171,12 @@ example :
   · simp
 
 
+example :
+    letI basis := ({1, 1} : Set <| MvPolynomial (Fin 3) ℚ)
+    lex.IsGroebnerBasis basis (Ideal.span basis) := by
+
+    sorry
+
 lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ Ideal.span G) : r + f * g ∈ Ideal.span (insert g G):= by
   have h₁ : f * g ∈ Ideal.span (insert g G) := by
     rw [Ideal.span_insert]
