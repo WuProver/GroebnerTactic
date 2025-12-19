@@ -921,8 +921,112 @@ elab "basis" : tactic  => do
         evalTactic (← `(tactic|
         · simp))
 
+elab "basis1" : tactic => do
+  let goal ← Lean.Elab.Tactic.getMainGoal
+  let t ← goal.getType
+  let t ← checkTypeQ t q(Prop)
+  match t with
+  | none => return
+  | some expr =>
+    match expr with
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsGroebnerBasis
+      _ $R $instCommSemiring $basis $ideal) =>
+      let idealExpr ← instantiateMVars ideal
+      logInfo m!"[DEBUG Ideal basis1] : {idealExpr}"
+      logInfo m!"[DEBUG Ideal] : {ideal}"
+      let inputPolyList ← match idealExpr.getAppFnArgs with
+        | (``Ideal.span, #[_, _, _, s]) =>
+           parseSet (σ := σ) (R := R) (r := instCommSemiring) s
+        | _ => throwError "Expected ideal to be of the form `Ideal.span (...)`."
+
+      logInfo m!"[DEBUG Input to Sage] : {inputPolyList}"
+
+      let sage_result ← runSage (.basis s!"{inputPolyList}")
+      logInfo m!"[Sage Result] {sage_result}"
+
+      let result := Json.parse s!"{sage_result}"
+      let sage_json_result ← parseJson result
+      let Except.ok arr := sage_json_result.getArr? | failure
+
+      let parsedTermsArray ← arr.mapM mkPolyListTerm
+      logInfo m!"[DEBUG Basis] parsedTermsArray: {parsedTermsArray}"
 
 
+      let mut newBasisSyntax ← `(∅)
+      for term in parsedTermsArray.reverse do
+        newBasisSyntax ← `(insert $term $newBasisSyntax)
+
+      let newBasisExpr ← Lean.Elab.Tactic.elabTerm newBasisSyntax none
+
+      if ← isDefEq basis newBasisExpr then
+        logInfo "Success: Assigned basis."
+      else
+        throwError "Failed to assign basis."
+
+      if ← isDefEq basis newBasisExpr then
+        logInfo "Successfully assigned Groebner Basis to hole."
+      else
+        throwError "Failed to assign computed basis to the goal."
+
+      evalTactic (← `(tactic|
+        rw [buchberger_criterion]
+      ))
+
+      evalTactic (← `(tactic|
+        simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
+          forall_eq_or_imp, forall_eq, sPolynomial_self]
+      ))
+
+      evalTactic (← `(tactic|
+        simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
+      ))
+
+      evalTactic (← `(tactic|
+        simp_rw [isRemainder_range_fin]
+      ))
+
+      evalTactic (← `(tactic|
+        split_ands
+      ))
+
+      for i in parsedTermsArray do
+        evalTactic (← `(tactic|
+        focus
+          use $i:term
+        ))
+        evalTactic (← `(tactic|
+          split_ands
+        ))
+        evalTactic (← `(tactic|
+        focus
+            simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+            all_goals decide +kernel
+        ))
+        evalTactic (← `(tactic|
+        focus
+            intro i
+            fin_cases i
+            all_goals {
+              simp only [List.get]
+              rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
+                SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
+                ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
+              decide +kernel
+            }
+        ))
+        evalTactic (← `(tactic|
+        · simp))
+
+macro "get_basis" input_1:term input_2:term name:ident : tactic => `(tactic|
+  have $name : IsGroebnerBasis $input_1 (Ideal.span $input_2) := by
+    sorry
+)
+
+example : True := by
+  get_basis {X 0: MvPolynomial (Fin 3) ℚ} {X 0:  MvPolynomial (Fin 3) ℚ} gb
+  sorry
+
+end section
 open MvPolynomial
 variable {σ : Type*} (m : MonomialOrder σ)
 variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
