@@ -4,7 +4,8 @@
 from sage.all_cmdline import *   # import sage library
 
 _sage_const_0 = Integer(0); _sage_const_1 = Integer(1); _sage_const_2 = Integer(2)# This is a file used for tactic `basis`
-# 
+# input : Mvpolynomial set `S = (f1,...fn)`
+# output : The coeffs of the linear combination of (f_1,..,f_n) when expressing spoly(fi,fj)
 import argparse
 import ast
 import re

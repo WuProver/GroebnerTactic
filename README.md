@@ -1,6 +1,11 @@
 # GroebnerTac
-This repository contains Lean 4 tactics focused on the automated formal verification of Groebner Basis properties and computations. Our main goal is to create powerful tactics that can automatically prove theorems related to Groebner Basis or the application of Groebner Basis within the Lean 4 theorem prover. For the foundational definitions and theorems concerning Groebner Bases that underpin this work, please refer to our [groebner_proj](https://github.com/WuProver/groebner_proj). A significant challenge in Lean is that the standard `MvPolynomial` type is generally non-computable in the context of proof automation. To address this, we have developed a dedicated implementation of [computable polynomials](https://github.com/WuProver/MonomialOrderedPolynomial) suitable for execution and computation within Lean's kernel.
+This repository contains Lean 4 tactics focused on the automated formal verification of Groebner Basis properties and computations. 
 
+Our main goal is to create powerful tactics that can automatically prove theorems related to Groebner Basis or the application of Groebner Basis within the Lean 4 theorem prover. 
+
+For the foundational definitions and theorems concerning Groebner Bases that underpin this work, please refer to our [groebner_proj](https://github.com/WuProver/groebner_proj). A significant challenge in Lean is that the standard `MvPolynomial` type is generally non-computable in the context of proof automation. To address this, we have developed a dedicated implementation of [computable polynomials](https://github.com/WuProver/MonomialOrderedPolynomial) suitable for execution and computation within Lean's kernel.
+
+Both the library and its documents are still WIP.
 ## Introduction
 ### Lean To Sage
 

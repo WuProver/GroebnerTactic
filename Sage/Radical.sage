@@ -1,3 +1,7 @@
+# This is a file used for tactic `radical_membership`
+# input : Mvpolynomial `f` and the generator set of `I`
+# output : `n` satisfies `f^n \in I
+
 import argparse
 import re
 import sys

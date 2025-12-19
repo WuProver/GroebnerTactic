@@ -4,6 +4,8 @@
 from sage.all_cmdline import *   # import sage library
 
 _sage_const_0 = Integer(0); _sage_const_1 = Integer(1)# This is a file used for tactic `ideal`
+# Input : the generator list of ideal `I` and `J`
+# Output : The coeffs of the linear combination of `f` in `I` with respect to `J` and the linear combination of `g` in `J` with respect to `I`
 import re
 import argparse
 import io

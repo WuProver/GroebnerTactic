@@ -4,6 +4,9 @@
 from sage.all_cmdline import *   # import sage library
 
 _sage_const_0 = Integer(0); _sage_const_1 = Integer(1)# This is a file used for tactic `ideal_not_mem`
+# Input : Mvpolynomial `f` and Mvpolynomial set `S`(is not necessary a groebner basis)
+# Output : the remainder of `f` with respect to the groebner basis of `S`
+# Example : sage Sage/GRemainder.sage -p "1" -s "[X_0, X_1]" -> 1
 import argparse
 import ast
 import re
@@ -127,54 +130,6 @@ def convert_poly_to_json(poly, vars_list):
             })
 
     return terms_list
-# def convert_poly_to_json(poly, vars_list):
-#     terms_list = []
-#     # print(f"poly {type(poly)}")
-
-#     ring_gens = poly.parent().gens()
-
-#     if poly.is_zero():
-#         terms_list.append({
-#             "c": [int(0), int(1)], 
-#             "e": [] 
-#         })
-#     else:
-#         for exp_tuple, coeff in poly.dict().items():
-
-#             if hasattr(coeff, 'numerator') and hasattr(coeff, 'denominator'):
-
-#                 coeff_num = int(coeff.numerator())
-#                 coeff_den = int(coeff.denominator())
-#             else:
-    
-#                 coeff_num = int(coeff)
-#                 coeff_den = 1
-
-#             exponent_pairs = []
-            
-#             for i, power in enumerate(exp_tuple):
-#                 if power != 0:
-
-#                     current_var = ring_gens[i]
-                    
-#                     try:
-#                         target_index = vars_list.index(current_var)
-#                     except ValueError:
-                
-#                         try:
-#                             target_index = vars_list.index(str(current_var))
-#                         except ValueError:
-                        
-#                             raise ValueError(f"Variable {current_var} not found in vars_list provided.")
-
-#                     exponent_pairs.append([int(target_index), int(power)])
-
-#             terms_list.append({
-#                 "c": [coeff_num, coeff_den],
-#                 "e": exponent_pairs
-#             })
-
-#     return terms_list
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description = "remainder")
@@ -216,7 +171,6 @@ if __name__ == "__main__":
         # remainder algorithm
         remainder = f.reduce(I)
 
-        # print(f"[DEBUG] : {remainder}")
         json_output = convert_poly_to_json(remainder, vars_list)
         print(json.dumps(json_output))
 

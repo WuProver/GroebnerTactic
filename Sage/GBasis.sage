@@ -1,4 +1,6 @@
-# This is a file used for tactic `ideal_mem` (Groebner Basis Calculation)
+# This is a file used for tactic `ideal_mem` 
+# input: Mvpolynomial set `S`
+# output: Groebner Basis of `S`
 import argparse
 import re
 import io

@@ -1,5 +1,6 @@
 # This is a file used for tactic `basis`
-# 
+# input : Mvpolynomial set `S = (f1,...fn)`
+# output : The coeffs of the linear combination of (f_1,..,f_n) when expressing spoly(fi,fj)
 import argparse
 import ast
 import re

@@ -1,7 +1,7 @@
-# This is a file used for tactic `ideal_not_mem`
+# This is a file used for tactic `ideal_mem`
 # Input : Mvpolynomial `f` and Mvpolynomial set `S`(is not necessary a groebner basis)
-# Output : the remainder of `f` with respect to the groebner basis of `S`
-# Example : sage Sage/GRemainder.sage -p "1" -s "[X_0, X_1]" -> 1
+# Output : the remainder coeff of `f` with respect to the groebner basis of `S`
+# Example : sage Sage/Idealmem.sage -p "X_0" -s "[X_0, X_1]" -> []
 import argparse
 import ast
 import re
@@ -127,7 +127,7 @@ def convert_poly_to_json(poly, vars_list):
     return terms_list
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description = "remainder")
+    parser = argparse.ArgumentParser(description = "ideal_mem")
 
     parser.add_argument('-p', '--polynomial', type = str, required=True)
 
@@ -159,17 +159,21 @@ if __name__ == "__main__":
         else:
             poly_objs = [s.strip() for s in cleaned_str.split(',') if s.strip()]
 
-        # g = (((X_0^2 + X_1^3) + X_2^4) + X_3^5)
         I = ring.ideal(poly_objs)
-        gb = I.groebner_basis()
 
-        # remainder algorithm
-        remainder = f.reduce(I)
+        try:
+            coeffs = f.lift(I)
+            
+            output_list = []
+            for c in coeffs:
+                output_list.append(convert_poly_to_json(c, vars_list))
+            
+            print(json.dumps(output_list))
 
-        json_output = convert_poly_to_json(remainder, vars_list)
-        print(json.dumps(json_output))
+        except ValueError as e:
+            sys.stderr.write(f"Polynomial is not in the ideal: {e}\n")
+            print(json.dumps([])) 
 
     except Exception as e:
-        print(f"\n[!!! Remainder Error !!!] : {e}")
-        import traceback
-        traceback.print_exc()
+        sys.stderr.write(f"\n[!!! Coefficient Error !!!] : {e}\n")
+        sys.exit(1)

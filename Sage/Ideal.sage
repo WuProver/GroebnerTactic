@@ -1,4 +1,6 @@
 # This is a file used for tactic `ideal`
+# Input : the generator list of ideal `I` and `J`
+# Output : The coeffs of the linear combination of `f` in `I` with respect to `J` and the linear combination of `g` in `J` with respect to `I`
 import re
 import argparse
 import io

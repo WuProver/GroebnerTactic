@@ -60,7 +60,6 @@ example : 1 ∉ Ideal.span  ({X 1*X 3 + 1, X 0 + X 1} : Set <| MvPolynomial (Fin
    ideal_membership
 
 example : 1 ∈ Ideal.span ({X 0, X 1, 1 - X 3 * X 0} : Set <| MvPolynomial (Fin 4) ℚ) := by
-
   ideal_membership
 
 -- example : 1
@@ -72,6 +71,7 @@ example :
   X 0 * X 1 ∈ (Ideal.span ({X 0 ^ 5, X 1 ^ 5} : Set (MvPolynomial (Fin 3) ℚ))).radical:= by
     radical_membership
 
+set_option maxHeartbeats 2000000 in
 example :
   X 2 ∉ (Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   radical_membership

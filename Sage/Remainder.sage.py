@@ -4,6 +4,8 @@
 from sage.all_cmdline import *   # import sage library
 
 _sage_const_0 = Integer(0); _sage_const_1 = Integer(1)# This is a file used for tactic `remainder`
+# Input : Mvpolynomial `f` and Mvpolynomial set `S`
+# Output : The coeffs of the linear combination of `f` with respect to `S`
 import argparse
 import ast
 import re
@@ -128,7 +130,19 @@ def convert_quotient_to_json(quotients, vars_list):
                 
                 # process exponent
                 exponent_pairs = []
-                for i, power in enumerate(exp_tuple):
+
+                if isinstance(exp_tuple, int):
+                   
+                    if exp_tuple == _sage_const_0 :
+                        exp_list = [_sage_const_0 ] * num_vars
+                    else:
+                        exp_list = [exp_tuple]
+                elif exp_tuple is None:
+                    exp_list = []
+                else:
+                    exp_list = exp_tuple
+
+                for i, power in enumerate(exp_list):
                     if power != _sage_const_0 :
                         exponent_pairs.append([i, int(power)])
 
