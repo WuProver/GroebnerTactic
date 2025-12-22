@@ -319,25 +319,62 @@ partial def parsePoly {u v: Lean.Level}
   | ~q(MvPolynomial.C $val) =>
       let r ← Mathlib.Meta.NormNum.derive val
       pure s!"{r.toRat.get!}"
-    -- match val with
-    -- | ~q(@HDiv.hDiv («$R»)
-    --   («$R») («$R») $commring $a $b) =>
-    --   -- pure s!"{a}/{b}"
-    --   match a, b with
-    --   | ~q(@OfNat.ofNat _ _ $n1),  ~q(@OfNat.ofNat _ _ $n2) =>
-    --     match n1, n2 with
-    --     | ~q(@Rat.instOfNat $n1),  ~q(@Rat.instOfNat $n2)
-    --       pure s!"{n1}/{n2}"
-    --     | _ =>
-    --       pure s!"{n1}/{n2}"
-    -- | _ =>
 
   | ~q(@OfNat.ofNat _ $b $n) =>
     logInfo "go to this branch"
     pure s!"{b}"
 
   | _ =>
-    pure s!"{e}"
+
+    if e.isAppOf ``HAdd.hAdd || e.isAppOf ``Add.add then
+      let b := e.appArg!
+      let a := e.appFn!.appArg!
+
+      let a_q : Q(MvPolynomial $σ $R) := a
+      let b_q : Q(MvPolynomial $σ $R) := b
+
+
+      let aStr ← parsePoly (r:=r) a_q
+      let bStr ← parsePoly (r:=r) b_q
+      pure s!"({aStr} + {bStr})"
+
+    else if e.isAppOf ``HSub.hSub || e.isAppOf ``Sub.sub then
+      let b := e.appArg!
+      let a := e.appFn!.appArg!
+
+      let a_q : Q(MvPolynomial $σ $R) := a
+      let b_q : Q(MvPolynomial $σ $R) := b
+
+      let aStr ← parsePoly (r:=r) a_q
+      let bStr ← parsePoly (r:=r) b_q
+      pure s!"({aStr} - {bStr})"
+
+    else if e.isAppOf ``HMul.hMul || e.isAppOf ``Mul.mul then
+      let b := e.appArg!
+      let a := e.appFn!.appArg!
+
+      let a_q : Q(MvPolynomial $σ $R) := a
+      let b_q : Q(MvPolynomial $σ $R) := b
+
+      let aStr ← parsePoly (r:=r) a_q
+      let bStr ← parsePoly (r:=r) b_q
+      pure s!"{aStr} * {bStr}"
+
+    else if e.isAppOf ``MvPolynomial.X then
+      let idx := e.appArg!
+
+      let idxStr ← Meta.ppExpr idx
+      pure s!"X_{idxStr.pretty}"
+
+    else if e.isAppOf ``OfNat.ofNat then
+       let s ← Meta.ppExpr e
+       pure s.pretty
+
+    else
+      logWarning m!"[parsePoly] cannot parse the structure: {e}"
+      let s ← Meta.ppExpr e
+      pure s.pretty
+
 
 #eval parsePoly q(1: MvPolynomial Nat Nat)
 #eval parsePoly q(X 1 - C (1 / 2): MvPolynomial (Fin 2) ℚ)
@@ -357,18 +394,82 @@ partial def parseSet {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommS
     let VarB ← parseSet (σ := σ) (R := R) (r := r) b
 
     pure (VarA :: VarB)
-  | ~q((∅: Set (MvPolynomial _ _))) => pure []
-  | ~q(Set.singleton $v) =>
 
+  | ~q((∅: Set (MvPolynomial _ _))) => pure []
+
+  | ~q(Singleton.singleton $x) =>
+    let xStr ← parsePoly (σ := σ) (R := R) (r := r) x
+    logInfo m!"[parseSet] Found Singleton.singleton: {x}"
+    pure [xStr]
+
+  | ~q(Set.singleton $v) =>
     let vStr ← parsePoly (σ := σ) (R := R) (r := r) v
     pure [vStr]
   | ~q(singleton $v) =>
 
     let vStr ← parsePoly (σ := σ) (R := R) (r := r) v
     pure [vStr]
-  | _ => unreachable!
+  | _ => throwError m!"[parseSet] Failed to parse the structure\n: {e}
+  \n"
 
 
+partial def parseSet' {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommSemiring $R)}
+    (e : Q(Set (MvPolynomial $σ $R))) : MetaM (List String) := do
+
+  match e with
+  | ~q(Insert.insert (γ:=Set _) $a $b) =>
+    let VarA ← parsePoly (σ := σ) (R := R) (r := r) a
+    let VarB ← parseSet' (σ := σ) (R := R) (r := r) b
+    pure (VarA :: VarB)
+
+  | ~q((∅: Set (MvPolynomial _ _))) => pure []
+  | ~q(EmptyCollection.emptyCollection) => pure []
+
+  | _ =>
+    if e.isAppOf ``Insert.insert then
+
+      let b_raw := e.appArg!
+      let a_raw := e.appFn!.appArg!
+
+      let a_q : Q(MvPolynomial $σ $R) := a_raw
+      let b_q : Q(Set (MvPolynomial $σ $R)) := b_raw
+
+      let VarA ← parsePoly (σ := σ) (R := R) (r := r) a_q
+      let VarB ← parseSet' (σ := σ) (R := R) (r := r) b_q
+      pure (VarA :: VarB)
+
+    else if e.isAppOf ``Singleton.singleton then
+      logInfo m!"[parseSet] Hard match: Singleton.singleton found!"
+      let x_raw := e.appArg!
+      let x_q : Q(MvPolynomial $σ $R) := x_raw
+      let xStr ← parsePoly (σ := σ) (R := R) (r := r) x_q
+      pure [xStr]
+
+    else if e.isAppOf ``Set.singleton then
+      logInfo m!"[parseSet] Hard match: Set.singleton found!"
+      let x_raw := e.appArg!
+      let x_q : Q(MvPolynomial $σ $R) := x_raw
+      let xStr ← parsePoly (σ := σ) (R := R) (r := r) x_q
+      pure [xStr]
+
+    else
+      throwError m!"[parseSet Error] Unmatched Structure\nExpr: {e}\nAppFn: {e.getAppFn}"
+
+
+def mkSetSyntaxFromTerms (terms : Array Term) : MetaM Term := do
+  if terms.isEmpty then
+    `(∅)
+  else
+    let termStrs ← terms.mapM fun t => do
+      let fmt ← Lean.PrettyPrinter.ppTerm t
+      return fmt.pretty
+
+    let setStr := "{" ++ String.intercalate ", " termStrs.toList ++ "}"
+
+    let env ← getEnv
+    match Lean.Parser.runParserCategory env `term setStr with
+    | Except.ok stx => return ⟨stx⟩
+    | Except.error e => throwError s!"Failed to create set syntax: {e}"
 /-
 In this section, we define the tactics to call Sage to prove some algebraic facts
 -/
@@ -921,112 +1022,8 @@ elab "basis" : tactic  => do
         evalTactic (← `(tactic|
         · simp))
 
-elab "basis1" : tactic => do
-  let goal ← Lean.Elab.Tactic.getMainGoal
-  let t ← goal.getType
-  let t ← checkTypeQ t q(Prop)
-  match t with
-  | none => return
-  | some expr =>
-    match expr with
-    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsGroebnerBasis
-      _ $R $instCommSemiring $basis $ideal) =>
-      let idealExpr ← instantiateMVars ideal
-      logInfo m!"[DEBUG Ideal basis1] : {idealExpr}"
-      logInfo m!"[DEBUG Ideal] : {ideal}"
-      let inputPolyList ← match idealExpr.getAppFnArgs with
-        | (``Ideal.span, #[_, _, _, s]) =>
-           parseSet (σ := σ) (R := R) (r := instCommSemiring) s
-        | _ => throwError "Expected ideal to be of the form `Ideal.span (...)`."
-
-      logInfo m!"[DEBUG Input to Sage] : {inputPolyList}"
-
-      let sage_result ← runSage (.basis s!"{inputPolyList}")
-      logInfo m!"[Sage Result] {sage_result}"
-
-      let result := Json.parse s!"{sage_result}"
-      let sage_json_result ← parseJson result
-      let Except.ok arr := sage_json_result.getArr? | failure
-
-      let parsedTermsArray ← arr.mapM mkPolyListTerm
-      logInfo m!"[DEBUG Basis] parsedTermsArray: {parsedTermsArray}"
 
 
-      let mut newBasisSyntax ← `(∅)
-      for term in parsedTermsArray.reverse do
-        newBasisSyntax ← `(insert $term $newBasisSyntax)
-
-      let newBasisExpr ← Lean.Elab.Tactic.elabTerm newBasisSyntax none
-
-      if ← isDefEq basis newBasisExpr then
-        logInfo "Success: Assigned basis."
-      else
-        throwError "Failed to assign basis."
-
-      if ← isDefEq basis newBasisExpr then
-        logInfo "Successfully assigned Groebner Basis to hole."
-      else
-        throwError "Failed to assign computed basis to the goal."
-
-      evalTactic (← `(tactic|
-        rw [buchberger_criterion]
-      ))
-
-      evalTactic (← `(tactic|
-        simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
-          forall_eq_or_imp, forall_eq, sPolynomial_self]
-      ))
-
-      evalTactic (← `(tactic|
-        simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
-      ))
-
-      evalTactic (← `(tactic|
-        simp_rw [isRemainder_range_fin]
-      ))
-
-      evalTactic (← `(tactic|
-        split_ands
-      ))
-
-      for i in parsedTermsArray do
-        evalTactic (← `(tactic|
-        focus
-          use $i:term
-        ))
-        evalTactic (← `(tactic|
-          split_ands
-        ))
-        evalTactic (← `(tactic|
-        focus
-            simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
-            all_goals decide +kernel
-        ))
-        evalTactic (← `(tactic|
-        focus
-            intro i
-            fin_cases i
-            all_goals {
-              simp only [List.get]
-              rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-                SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-                ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-              decide +kernel
-            }
-        ))
-        evalTactic (← `(tactic|
-        · simp))
-
-macro "get_basis" input_1:term input_2:term name:ident : tactic => `(tactic|
-  have $name : IsGroebnerBasis $input_1 (Ideal.span $input_2) := by
-    sorry
-)
-
-example : True := by
-  get_basis {X 0: MvPolynomial (Fin 3) ℚ} {X 0:  MvPolynomial (Fin 3) ℚ} gb
-  sorry
-
-end section
 open MvPolynomial
 variable {σ : Type*} (m : MonomialOrder σ)
 variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
@@ -1212,47 +1209,83 @@ elab "basis'" : tactic  => do
 
       let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-      logInfo m!"[DEBUG] basis {basis_term}"
-      logInfo m!"[DBEUG] ideal {ideal_term}"
-      logInfo m!"[DEBUG] polyType : {polyType}"
-
-      evalTactic (← `(tactic|
+      evalTactic (← `(tactic|{
         have h_gb :
         letI basis := ($basis_term : Set $polyType)
         lex.IsGroebnerBasis basis (Ideal.span basis) := by
           basis
-      ))
-
-      evalTactic (← `(tactic|
         have h_ideal : Ideal.span ($basis_term) = $ideal_term := by
           ideal
-      ))
-
-      evalTactic (← `(tactic|
         simp [h_ideal] at h_gb
-      ))
-
-      evalTactic (← `(tactic|
         exact h_gb
-      ))
+      }))
 
 
 
+elab "add_gb_hyp" name:(ident)? G:term : tactic =>
+  withMainContext do
 
-def mkSetSyntaxFromTerms (terms : Array Term) : MetaM Term := do
-  if terms.isEmpty then
-    `(∅)
-  else
-    let termStrs ← terms.mapM fun t => do
-      let fmt ← Lean.PrettyPrinter.ppTerm t
-      return fmt.pretty
+    let G_expr ← Term.withSynthesize <| Term.elabTerm G none
+    let G_expr ← instantiateMVars G_expr
 
-    let setStr := "{" ++ String.intercalate ", " termStrs.toList ++ "}"
+    let type ← inferType G_expr
+    let type ← instantiateMVars type
 
-    let env ← getEnv
-    match Lean.Parser.runParserCategory env `term setStr with
-    | Except.ok stx => return ⟨stx⟩
-    | Except.error e => throwError s!"Failed to create set syntax: {e}"
+    let (polyType) ← match type.getAppFnArgs with
+      | (``Set, #[p]) => pure p
+      | _ => throwError m!"Expected Set, got: {type}"
+    let (σ_expr, R_expr, inst_expr) ← match polyType.getAppFnArgs with
+      | (``MvPolynomial, #[s, r, i]) => pure (s, r, i)
+      | _ => throwError m!"Expected MvPolynomial with instance,
+      got: {polyType}
+      Args: {polyType.getAppFnArgs}"
+
+    let u_sigma ← getLevel σ_expr
+    let v_R ← getLevel R_expr
+
+    let σ : Q(Type u_sigma) := σ_expr
+    let R : Q(Type v_R)     := R_expr
+
+    let inst : Q(CommSemiring $R) := inst_expr
+
+    let polys ← parseSet' (σ := σ) (R := R) (r := inst) G_expr
+
+
+
+    let sage_gb ← runSage (.GBasis s!"{polys}")
+
+    let gb := Json.parse s!"{sage_gb}"
+    let gb ← parseJson gb
+    let Except.ok gb_arr := gb.getArr? | failure
+
+    let exprArray ← gb_arr.mapM fun jsonElem => mkPolyExpr jsonElem
+
+    let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
+
+    let setSyntax ← mkSetSyntaxFromTerms argsTerms
+
+    let stx ← `(lex.IsGroebnerBasis $setSyntax (Ideal.span $G))
+    -- let ty ← Term.elabTerm stx none
+    let ty ← Term.withSynthesize <| Term.elabTerm stx none
+    let ty ← instantiateMVars ty
+
+
+    let proofSyntax ← `(by basis')
+    let proof ← Term.elabTerm proofSyntax (some ty)
+
+    let hypName := name.map (·.getId) |>.getD `this
+
+    liftMetaTactic fun mvarId => do
+      mvarId.withContext do
+
+        let mvarIdNew ← mvarId.assert hypName ty proof
+
+        let (_fvarId, mvarIdNew) ← mvarIdNew.intro1P
+
+        return [mvarIdNew]
+
+
+
 
 syntax (name := groebnerMembership) "ideal_membership" : tactic
 @[tactic groebnerMembership]
@@ -1818,11 +1851,6 @@ end IsRemainder
 
 
 open MvPolynomial MonomialOrder
-
-set_option maxHeartbeats 2000000 in
-example:
-  lex.IsGroebnerBasis ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} : Set <| MvPolynomial (Fin 3) ℚ)  (Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} : Set <| MvPolynomial (Fin 3) ℚ)):= by
-   basis'
 
 
 namespace Mathlib.Tactic.IsGroebner

@@ -170,12 +170,16 @@ example :
       }
   · simp
 
-
-example :
-    letI basis := ({1, 1} : Set <| MvPolynomial (Fin 3) ℚ)
-    lex.IsGroebnerBasis basis (Ideal.span basis) := by
-
-    sorry
+set_option maxHeartbeats 20000000 in
+example:
+  lex.IsGroebnerBasis ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} : Set <| MvPolynomial (Fin 3) ℚ)  (Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} : Set <| MvPolynomial (Fin 3) ℚ)):= by
+    have h_gb : let basis : Set (MvPolynomial (Fin 3) ℚ) := {X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2}
+          lex.IsGroebnerBasis basis (Ideal.span basis) := by
+      basis
+    have h_ideal : Ideal.span ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} : Set <| MvPolynomial (Fin 3) ℚ) = Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} : Set <| MvPolynomial (Fin 3) ℚ) := by
+      ideal
+    simp [h_ideal] at h_gb
+    exact h_gb
 
 lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ Ideal.span G) : r + f * g ∈ Ideal.span (insert g G):= by
   have h₁ : f * g ∈ Ideal.span (insert g G) := by
