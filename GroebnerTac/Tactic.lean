@@ -1196,7 +1196,7 @@ elab "ideal" : tactic => do
 elab "basis'" : tactic  => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   logInfo m!"[DEBUG `basis` Goal] : {goal}"
-  let t ← goal.getType
+  let t ← instantiateMVars (← goal.getType)
   let t ← checkTypeQ t q(Prop)
   match t with
   | none => return
@@ -1209,18 +1209,58 @@ elab "basis'" : tactic  => do
 
       let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
+      -- logInfo m!"[DEBUG Basis Term] : {basis_term}"
+      -- logInfo m!"[DEBUG Ideal Term] : {ideal_term}"
+
+
       evalTactic (← `(tactic|{
         have h_gb :
-        letI basis := ($basis_term : Set $polyType)
-        lex.IsGroebnerBasis basis (Ideal.span basis) := by
+        lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
           basis
-        have h_ideal : Ideal.span ($basis_term) = $ideal_term := by
+        have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
           ideal
-        simp [h_ideal] at h_gb
+        simp only [h_ideal] at h_gb
         exact h_gb
       }))
 
 
+elab "base" : tactic  => do
+  let goal ← Lean.Elab.Tactic.getMainGoal
+  logInfo m!"[DEBUG `basis` Goal] : {goal}"
+  let t ← instantiateMVars (← goal.getType)
+  let t ← checkTypeQ t q(Prop)
+  match t with
+  | none => return
+  | some expr =>
+    match expr with
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsGroebnerBasis
+      _ $R $instCommSemiring $basis $ideal) =>
+      let basis_term ← Lean.PrettyPrinter.delab basis
+      let ideal_term ← Lean.PrettyPrinter.delab ideal
+
+      let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
+
+      logInfo m!"[DEBUG Basis Term] : {basis_term}"
+      logInfo m!"[DEBUG Ideal Term] : {ideal_term}"
+
+
+      evalTactic (← `(tactic|{
+        have h_gb :
+        lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
+          simp
+          basis
+        have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
+          simp
+          ideal
+        simp only [h_ideal] at h_gb
+        exact h_gb
+      }))
+
+
+set_option maxHeartbeats 20000000 in
+example:
+  lex.IsGroebnerBasis ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} : Set <| MvPolynomial (Fin 3) ℚ)  (Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} : Set <| MvPolynomial (Fin 3) ℚ)):= by
+    basis'
 
 elab "add_gb_hyp" name:(ident)? G:term : tactic =>
   withMainContext do
@@ -1270,7 +1310,7 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
     let ty ← instantiateMVars ty
 
 
-    let proofSyntax ← `(by basis')
+    let proofSyntax ← `(by base)
     let proof ← Term.elabTerm proofSyntax (some ty)
 
     let hypName := name.map (·.getId) |>.getD `this
@@ -1283,7 +1323,6 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
         let (_fvarId, mvarIdNew) ← mvarIdNew.intro1P
 
         return [mvarIdNew]
-
 
 
 
@@ -1843,8 +1882,6 @@ def evalradicalMembership : Tactic := fun stx => do
 
     | _ => throwError "Goal must be of form `f ∈ (Ideal.span S).
     radical` or form of `f ∉ (Ideal.span S).radical`"
-
-
 
 
 end IsRemainder

@@ -64,16 +64,21 @@ example :
     remainder
       -- sorry
 
+set_option maxHeartbeats 20000000 in
+example:
+  lex.IsGroebnerBasis
+  ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} :
+    Set <| MvPolynomial (Fin 3) ℚ)
+  (Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} :
+    Set <| MvPolynomial (Fin 3) ℚ)):= by
+    basis'
 
-example : lex.IsGroebnerBasis ({X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) (Ideal.span {X 0, X 0 + X 1}) := by
+example : lex.IsGroebnerBasis ({X 0, X 1} :
+ Set (MvPolynomial (Fin 3) ℚ)) (Ideal.span {X 0, X 0 + X 1}) := by
   add_gb_hyp h ({X 0, X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))
   simp at h
   exact h
 
-set_option maxHeartbeats 20000000 in
-example:
-  lex.IsGroebnerBasis ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} : Set <| MvPolynomial (Fin 3) ℚ)  (Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} : Set <| MvPolynomial (Fin 3) ℚ)):= by
-    basis'
 
 example :
     letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
