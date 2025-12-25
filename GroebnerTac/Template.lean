@@ -25,6 +25,7 @@ open MvPolynomial
 variable {σ : Type*} (m : MonomialOrder σ)
 variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
 
+/- The template of the remainder equals to `0` -/
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
@@ -52,6 +53,7 @@ example :
       }
   simp
 
+/- The templaye of the remainder does not equal to `0` -/
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
       {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
@@ -90,6 +92,7 @@ example :
         rw [← SortedFinsupp.toFinsupp_tsub, SortedFinsupp.toFinsupp_eq_zero_iff]
         decide +kernel +revert
 
+/- The template of `G` is the groebner basis of `Ideal.span G` -/
 example :
     letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
@@ -170,6 +173,8 @@ example :
       }
   · simp
 
+
+/- The template of `G` is the groebner basis of `Ideal.span F` -/
 set_option maxHeartbeats 20000000 in
 example:
   lex.IsGroebnerBasis ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} : Set <| MvPolynomial (Fin 3) ℚ)  (Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} : Set <| MvPolynomial (Fin 3) ℚ)):= by
@@ -181,6 +186,7 @@ example:
     simp [h_ideal] at h_gb
     exact h_gb
 
+/- A lemma help prove f ∈ I -/
 lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ Ideal.span G) : r + f * g ∈ Ideal.span (insert g G):= by
   have h₁ : f * g ∈ Ideal.span (insert g G) := by
     rw [Ideal.span_insert]
@@ -191,6 +197,7 @@ lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ I
     rw [Ideal.span_insert]
     exact Submodule.mem_sup_right h
   exact (Submodule.add_mem_iff_right (Ideal.span (insert g G)) h₂).mpr h₁
+
 
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by

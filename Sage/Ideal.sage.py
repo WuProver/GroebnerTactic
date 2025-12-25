@@ -32,12 +32,20 @@ def extract_vars(str1, str2):
 
     return ordered_vars
 
+# def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
+
+#     if order not in ['lex', 'degrevlex', 'deglex']:
+#         raise ValueError(f"Unsupported order: {order}")
+
+#     R = PolynomialRing(base_ring, vars_list, order=order)
+#     return R
+
 def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
 
     if order not in ['lex', 'degrevlex', 'deglex']:
         raise ValueError(f"Unsupported order: {order}")
 
-    R = PolynomialRing(base_ring, vars_list, order=order)
+    R = PolynomialRing(base_ring, vars_list, order=order, implementation='singular')
     return R
 
 def parse_polynomials(ring, generator_list):
