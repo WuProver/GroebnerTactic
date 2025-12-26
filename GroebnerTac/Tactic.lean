@@ -144,12 +144,11 @@ open Qq in
 #eval do
   let Except.ok parsed := Lean.Json.parse
       "[{\"c\" : [1, 2], \"e\": [[0, 2], [2, 3]]}, {\"c\" : [3, 5], \"e\": [[4, 1]]}]" | failure
-  logInfo m!"{parsed}"
   let Except.ok p := Lean.fromJson? (α := Poly.Polynomial) parsed | failure
   let instOfNat ← Qq.synthInstanceQ q((n : Nat) → OfNat Nat n)
   let instField ← Qq.synthInstanceQ q(Field ℚ)
   let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
-  Lean.logInfo p
+  -- Lean.logInfo p
 
 
 /-
@@ -236,7 +235,7 @@ def mkPolyExpr (jsonElement : Json) : MetaM Expr := do
         let instOfNat ← Qq.synthInstanceQ q((n : Nat) → OfNat Nat n)
         let instField ← Qq.synthInstanceQ q(Field ℚ)
         let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
-        Lean.logInfo p
+        -- Lean.logInfo p
         pure p
 
 /-`mkPolyTerm` convert `Json` returned by sage to `Term` -/
@@ -247,7 +246,7 @@ def mkPolyTerm (jsonElement : Json) : MetaM Term := do
   | none => IO.throwServerError "There is not any result be parsed"
   | some p =>
     let p ← p.mkTerm
-    Lean.logInfo p
+    -- Lean.logInfo p
     pure p
 
 def exprListToSyntaxArray (es : List Expr) : MetaM (Array Syntax) := do
@@ -321,7 +320,6 @@ partial def parsePoly {u v: Lean.Level}
       pure s!"{r.toRat.get!}"
 
   | ~q(@OfNat.ofNat _ $b $n) =>
-    logInfo "go to this branch"
     pure s!"{b}"
 
   | _ =>
@@ -455,7 +453,6 @@ partial def parseSet {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(CommS
 
   | ~q(Singleton.singleton $x) =>
     let xStr ← parsePoly (σ := σ) (R := R) (r := r) x
-    logInfo m!"[parseSet] Found Singleton.singleton: {x}"
     pure [xStr]
 
   | ~q(Set.singleton $v) =>
@@ -495,14 +492,12 @@ partial def parseSet' {u v : Level} {σ : Q(Type u)} {R : Q(Type v)} {r : Q(Comm
       pure (VarA :: VarB)
 
     else if e.isAppOf ``Singleton.singleton then
-      logInfo m!"[parseSet] Hard match: Singleton.singleton found!"
       let x_raw := e.appArg!
       let x_q : Q(MvPolynomial $σ $R) := x_raw
       let xStr ← parsePoly (σ := σ) (R := R) (r := r) x_q
       pure [xStr]
 
     else if e.isAppOf ``Set.singleton then
-      logInfo m!"[parseSet] Hard match: Set.singleton found!"
       let x_raw := e.appArg!
       let x_q : Q(MvPolynomial $σ $R) := x_raw
       let xStr ← parsePoly (σ := σ) (R := R) (r := r) x_q
@@ -698,9 +693,6 @@ def evalRemainderTactic : Tactic := fun stx => do
 
           let varsStr := s!"{varsList}"
           let sage_result ← runSage (.remainder parsedPoly varsStr)
-          logInfo m!"[DEBUG Remainder parsedPoly] : {parsedPoly}"
-          logInfo m!"[DEBUG Remainder varsList] :{varsList}"
-          logInfo m!"[DEBUG Remainder sage_result] :{sage_result}"
 
           let result := Json.parse sage_result
           let sage_json_result ← parseJson result
@@ -748,11 +740,11 @@ elab "remainder_zero" : tactic => do
       let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
 
       let result := Json.parse s!"{sage_result}"
-      logInfo m!"[DEBUG] sage_json_result: {result}"
+
       let sage_json_result ← parseJson result
-      logInfo m!"[DEBUG] sage_json_result after parsing: {sage_json_result}"
+
       let Except.ok arr := sage_json_result.getArr? | failure
-      logInfo m!"Arr: {arr[0]!}"
+      -- logInfo m!"Arr: {arr[0]!}"
 
       let processList := arr.mapM mkPolyTerm
       let resultArray : Array Term ← processList
@@ -807,18 +799,18 @@ elab "remainder_neq_zero" : tactic => do
     match expr with
     | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsRemainder
       _ $R $instCommSemiring $poly $vars $r) =>
-      logInfo m!"[DEBUG] vars = {vars}"
+      -- logInfo m!"[DEBUG] vars = {vars}"
 
       let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
       let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
       -- let parsedR ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) r
 
-      logInfo m!"parsed vars: {varsList}"
-      logInfo m!"parsed polynomial: {parsedPoly}"
+      -- logInfo m!"parsed vars: {varsList}"
+      -- logInfo m!"parsed polynomial: {parsedPoly}"
 
       let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
 
-      logInfo m!"[DEBUG] check sage_result 11_26: {sage_result}"
+      -- logInfo m!"[DEBUG] check sage_result 11_26: {sage_result}"
 
 
       let result := Json.parse s!"{sage_result}"
@@ -887,7 +879,7 @@ elab "remainder_neq_zero" : tactic => do
 
 elab "basis" : tactic  => do
   let goal ← Lean.Elab.Tactic.getMainGoal
-  logInfo m!"[DEBUG `basis` Goal] : {goal}"
+  -- logInfo m!"[DEBUG `basis` Goal] : {goal}"
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
   match t with
@@ -898,18 +890,18 @@ elab "basis" : tactic  => do
       _ $R $instCommSemiring $basis $ideal) =>
 
       let basislist <- parseSet basis
-      logInfo m!"[DEBUG `basis`] : {basislist}"
+      -- logInfo m!"[DEBUG `basis`] : {basislist}"
       -- dbg_trace "parsed basis: {basislist}"
 
       let sage_result ← runSage (.basis s!"{basislist}")
-      logInfo m!"[Sage Result] {sage_result}"
+      -- logInfo m!"[Sage Result] {sage_result}"
       let result := Json.parse s!"{sage_result}"
       let sage_json_result ← parseJson result
 
       let Except.ok arr := sage_json_result.getArr? | failure
 
       let parsedTermsArray ← arr.mapM mkPolyListTerm
-      logInfo m!"[DEBUG Basis] parsedTermsArray: {parsedTermsArray}"
+      -- logInfo m!"[DEBUG Basis] parsedTermsArray: {parsedTermsArray}"
 
       evalTactic (← `(tactic|
         rw [buchberger_criterion]
@@ -1076,11 +1068,11 @@ elab "ideal" : tactic => do
         let I_gens_list ←  parseSet I_gens
         let J_gens_list ←  parseSet J_gens
 
-        logInfo m!"[DEBUG `ideal` I_gens_list] : {I_gens_list}"
-        logInfo m!"[DEBUG `ideal` J_gens_list] : {J_gens_list}"
+        -- logInfo m!"[DEBUG `ideal` I_gens_list] : {I_gens_list}"
+        -- logInfo m!"[DEBUG `ideal` J_gens_list] : {J_gens_list}"
 
         let sage_result ← runSage (.ideal s!"{I_gens_list}" s!"{J_gens_list}")
-        logInfo m!"[DEBUG `ideal` sage result] : {sage_result}"
+        -- logInfo m!"[DEBUG `ideal` sage result] : {sage_result}"
         let result := Json.parse s!"{sage_result}"
         let sage_json_result ← parseJson result
         let Except.ok poly_arr := sage_json_result.getArr? | failure
@@ -1130,7 +1122,7 @@ elab "ideal" : tactic => do
 
 elab "basis'" : tactic  => do
   let goal ← Lean.Elab.Tactic.getMainGoal
-  logInfo m!"[DEBUG `basis` Goal] : {goal}"
+  -- logInfo m!"[DEBUG `basis` Goal] : {goal}"
   let t ← instantiateMVars (← goal.getType)
   let t ← checkTypeQ t q(Prop)
   match t with
@@ -1161,7 +1153,7 @@ elab "basis'" : tactic  => do
 
 elab "base" : tactic  => do
   let goal ← Lean.Elab.Tactic.getMainGoal
-  logInfo m!"[DEBUG `basis` Goal] : {goal}"
+  -- logInfo m!"[DEBUG `basis` Goal] : {goal}"
   let t ← instantiateMVars (← goal.getType)
   let t ← checkTypeQ t q(Prop)
   match t with
@@ -1175,8 +1167,8 @@ elab "base" : tactic  => do
 
       let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-      logInfo m!"[DEBUG Basis Term] : {basis_term}"
-      logInfo m!"[DEBUG Ideal Term] : {ideal_term}"
+      -- logInfo m!"[DEBUG Basis Term] : {basis_term}"
+      -- logInfo m!"[DEBUG Ideal Term] : {ideal_term}"
 
 
       evalTactic (← `(tactic|{
@@ -1220,8 +1212,7 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
     let inst : Q(CommSemiring $R) := inst_expr
 
     let polys ← parseSet' (σ := σ) (R := R) (r := inst) G_expr
-    logInfo m!"[DEBUG `add_gb_hyp` check input polys] : {polys}"
-
+    -- logInfo m!"[DEBUG `add_gb_hyp` check input polys] : {polys}"
 
 
     let sage_gb ← runSage (.GBasis s!"{polys}")
@@ -1235,7 +1226,7 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
     let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
 
     let setSyntax ← mkSetSyntaxFromTerms argsTerms
-    logInfo m!"[DEBUG `add_gb_hyp` check setSyntax] : {setSyntax}"
+    -- logInfo m!"[DEBUG `add_gb_hyp` check setSyntax] : {setSyntax}"
 
     let stx ← `(lex.IsGroebnerBasis $setSyntax (Ideal.span $G))
     -- let ty ← Term.elabTerm stx none
@@ -1256,6 +1247,7 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
         let (_fvarId, mvarIdNew) ← mvarIdNew.intro1P
 
         return [mvarIdNew]
+
 
 
 syntax (name := groebnerMembership) "ideal_membership" : tactic
@@ -1307,9 +1299,9 @@ def evalGroebnerMembership : Tactic := fun stx => do
 
         let I_gens_list ←  parseSet I_gens
 
-        logInfo m!"[DBEUG I GENS LIST]{I_gens_list}"
+        -- logInfo m!"[DBEUG I GENS LIST]{I_gens_list}"
         let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
-        logInfo m!"[GB SAGE RESULT] : {sage_gb}"
+        -- logInfo m!"[GB SAGE RESULT] : {sage_gb}"
         let gb := Json.parse s!"{sage_gb}"
         let gb ← parseJson gb
         let Except.ok gb_arr := gb.getArr? | failure
@@ -1330,17 +1322,17 @@ def evalGroebnerMembership : Tactic := fun stx => do
         let f_term ← Lean.PrettyPrinter.delab f
         let I_term ← Lean.PrettyPrinter.delab I
         let rm_term ← Lean.PrettyPrinter.delab rm
-        logInfo m!"[DEBUG f_term] : {f_term}"
-        logInfo m!"[DEBUG I_term] : {I_term}"
-        logInfo m!"[DEBUG rm_term] : {rm_term}"
+        -- logInfo m!"[DEBUG f_term] : {f_term}"
+        -- logInfo m!"[DEBUG I_term] : {I_term}"
+        -- logInfo m!"[DEBUG rm_term] : {rm_term}"
 
         let setSyntax ← mkSetSyntaxFromTerms argsTerms
 
-        logInfo m!"[DEBUG `setSyntax`] : {setSyntax}"
+        -- logInfo m!"[DEBUG `setSyntax`] : {setSyntax}"
 
         let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-        logInfo m!"[DEBUG `polyType`] : {polyType}"
+        -- logInfo m!"[DEBUG `polyType`] : {polyType}"
         evalTactic (← `(tactic|
           have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
             simp only [_root_.ne_eq, _root_.one_ne_zero,
@@ -1352,9 +1344,9 @@ def evalGroebnerMembership : Tactic := fun stx => do
             basis
         ))
 
-        logInfo m!"[I Term] {I_term}"
-        logInfo m!"[setSyntax] {setSyntax}"
-        logInfo m!"[polyType] {polyType}"
+        -- logInfo m!"[I Term] {I_term}"
+        -- logInfo m!"[setSyntax] {setSyntax}"
+        -- logInfo m!"[polyType] {polyType}"
 
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
@@ -1405,6 +1397,7 @@ def evalGroebnerMembership : Tactic := fun stx => do
       | _ => throwError "Expect Ideal.span, but got {I}"
 
     | _ => throwError "Goal must be of form `f ∈ Ideal.span S` or form of `f ∉ Ideal.span S`"
+
 
 
 def insertPolyToSetExpr {u v : Level} {σ : Q(Type u)} {R : Q(Type v)}
@@ -1619,14 +1612,16 @@ def evalradicalMembership : Tactic := fun stx => do
               $I_gens)) =>
       let f_str ←  parsePoly f
       let I_gens_list ←  parseSet I_gens
-
-
+      -- logInfo m!"[DEBUG `radical_membership` f_str] : {f_str}"
+      -- logInfo m!"[DEBUG `radical_membership` I_gens_list] : {I_gens_list}"
 
       let n ← runSage (.radical f_str s!"{I_gens_list}")
 
       let n_val : Nat := n.trim.toNat!
       let n_expr := mkNatLit n_val
       let n_term ← Lean.PrettyPrinter.delab n_expr
+
+      -- logInfo m!"[DEBUG `radical_membership` n_term] : {n_term}"
 
 
       evalTactic (← `(tactic|
@@ -1641,7 +1636,7 @@ def evalradicalMembership : Tactic := fun stx => do
           ideal_membership
         ))
 
-      logInfo m!"{n}"
+      -- logInfo m!"{n}"
 
       pure 0
 
@@ -1683,7 +1678,6 @@ def evalradicalMembership : Tactic := fun stx => do
 
       let new_set_term : Term ← Lean.PrettyPrinter.delab new_set_expr
 
-      logInfo m!"[DEBUG NEW SET TERM] : {new_set_term} "
 
       evalTactic (← `(tactic|
       let g : Fin $n_term → Fin ($n_term + 1) := Fin.castSucc
@@ -1708,14 +1702,6 @@ def evalradicalMembership : Tactic := fun stx => do
       evalTactic (← `(tactic|
       rw [← Ideal.span_union] at h
       ))
-
-      -- evalTactic (← `(tactic|
-      -- rw [Set.image_singleton, Set.singleton_union] at h
-      -- ))
-
-      -- evalTactic (← `(tactic|
-      -- simp only [rename_X,  t] at h
-      -- ))
 
       evalTactic (← `(tactic|
       conv at h =>
@@ -1743,10 +1729,10 @@ def evalradicalMembership : Tactic := fun stx => do
         ideal_membership
       ))
 
-      logInfo m!"{new_set_term}"
 
       evalTactic (← `(tactic|
-      simp at h₁
+      simp only [Nat.reduceAdd, Fin.reduceLast, Fin.isValue, map_one,
+        Set.image_singleton, rename_X, Fin.castSucc_zero, map_add] at h₁
       ))
 
       evalTactic (← `(tactic|
@@ -1756,6 +1742,7 @@ def evalradicalMembership : Tactic := fun stx => do
 
     | _ => throwError "Goal must be of form `f ∈ (Ideal.span S).
     radical` or form of `f ∉ (Ideal.span S).radical`"
+
 
 
 end IsRemainder

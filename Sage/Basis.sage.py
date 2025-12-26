@@ -17,19 +17,6 @@ from sage.all import PolynomialRing, QQ, lcm
 from fractions import Fraction
 from itertools import combinations, product
 
-# def extract_vars(set_str):
-
-#     tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', set_str)
-
-#     seen = set()
-#     ordered_vars = []
-#     for var in tokens:
-#         if var not in seen:
-#             seen.add(var)
-#             ordered_vars.append(var)
-
-#     return ordered_vars
-
 def extract_vars(set_str):
     tokens = re.findall(r'[a-zA-Z_][a-zA-Z0-9_]*', set_str)
     
@@ -50,7 +37,8 @@ def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
     if order not in ['lex', 'degrevlex', 'deglex']:
         raise ValueError(f"Unsupported order: {order}")
 
-    R = PolynomialRing(base_ring, vars_list, order=order)
+    # R = PolynomialRing(base_ring, vars_list, order=order)
+    R = PolynomialRing(base_ring, vars_list, order=order, implementation="singular")
     return R
 
 def polynomial_division_multivariate(f, divisors, ring):

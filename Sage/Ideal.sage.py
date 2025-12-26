@@ -32,13 +32,6 @@ def extract_vars(str1, str2):
 
     return ordered_vars
 
-# def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
-
-#     if order not in ['lex', 'degrevlex', 'deglex']:
-#         raise ValueError(f"Unsupported order: {order}")
-
-#     R = PolynomialRing(base_ring, vars_list, order=order)
-#     return R
 
 def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
 
@@ -83,56 +76,6 @@ def find_linear_representation(poly_list_to_represent, ideal_basis, ideal_name, 
             traceback.print_exc()
 
     return results
-
-# def convert_polys_to_json(polys, vars_list):
-#     json_polys = []
-#     num_vars = len(vars_list)
-    
-#     var_to_index = {var: i for i, var in enumerate(vars_list)}
-
-#     for q_poly in polys:
-#         if isinstance(q_poly, str):
-#             q_poly = ring(q_poly)
-#         else:
-#             q_poly = q_poly
-#         terms_list = []
-        
-#         # parse 0-polynomial
-#         if q_poly.is_zero():
-#             terms_list.append({
-#                 "c": [int(0), int(1)], 
-#                 "e": [] 
-#             })
-#         else:
-#             for exp_tuple, coeff in q_poly.dict().items():
-#                 # process coefficient
-#                 if coeff.parent() is QQ:
-#                     # process rational number
-#                     coeff_num = int(coeff.numerator())
-#                     coeff_den = int(coeff.denominator())
-#                 elif coeff.is_integer():
-#                     # process int number
-#                     coeff_num = int(coeff)
-#                     coeff_den = 1
-#                 else:
-#                     coeff_num = int(coeff)
-#                     coeff_den = 1
-
-                
-#                 # process exponent
-#                 exponent_pairs = []
-#                 for i, power in enumerate(exp_tuple):
-#                     if power != 0:
-#                         exponent_pairs.append([int(i-1), int(power)])
-
-#                 terms_list.append({
-#                     "c": [coeff_num, coeff_den],
-#                     "e": exponent_pairs
-#                 })
-
-#         json_polys.append(terms_list)
-
-#     return json_polys
 
 def convert_polys_to_json(polys, vars_list):
     json_polys = []

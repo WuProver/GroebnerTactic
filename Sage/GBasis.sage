@@ -40,58 +40,10 @@ def extract_vars(set_str):
 def create_polynomial_ring(vars_list, order='lex', base_ring=QQ):
     if order not in ['lex', 'degrevlex', 'deglex']:
         raise ValueError(f"Unsupported order: {order}")
-    R = PolynomialRing(base_ring, vars_list, order=order)
+    # R = PolynomialRing(base_ring, vars_list, order=order)
+    R = PolynomialRing(base_ring, vars_list, order=order, implementation="singular")
     return R
 
-# def convert_gb_to_json(gb_list, vars_list):
-#     """
-#     Convert a LIST of polynomials (the Groebner Basis) to JSON.
-#     Returns: [ [terms_of_poly1], [terms_of_poly2], ... ]
-#     """
-#     json_output = []
-    
-#     for poly in gb_list:
-#         terms_list = []
-        
-#         # Handle Zero Polynomial
-#         if poly.is_zero():
-#             terms_list.append({
-#                 "c": [int(0), int(1)], 
-#                 "e": [] 
-#             })
-#         else:
-#             # poly.dict() returns {exponent_tuple: coefficient}
-#             for exp_tuple, coeff in poly.dict().items():
-                
-#                 # --- Process Coefficient ---
-#                 if hasattr(coeff, 'numerator') and hasattr(coeff, 'denominator'):
-#                     # Rational number (QQ)
-#                     coeff_num = int(coeff.numerator())
-#                     coeff_den = int(coeff.denominator())
-#                 elif hasattr(coeff, 'is_integer') and coeff.is_integer():
-#                     # Integer
-#                     coeff_num = int(coeff)
-#                     coeff_den = 1
-#                 else:
-#                     # Fallback
-#                     coeff_num = int(coeff)
-#                     coeff_den = 1
-
-#                 # --- Process Exponents ---
-#                 # exp_tuple matches the order of vars_list
-#                 exponent_pairs = []
-#                 for i, power in enumerate(exp_tuple):
-#                     if power != 0:
-#                         exponent_pairs.append([i, int(power)])
-
-#                 terms_list.append({
-#                     "c": [coeff_num, coeff_den],
-#                     "e": exponent_pairs
-#                 })
-
-#         json_output.append(terms_list)
-
-#     return json_output
 
 def convert_gb_to_json(gb_list, vars_list):
 
@@ -174,7 +126,6 @@ if __name__ == "__main__":
         # print(f"[DEBUG] {gb}")
 
         # 5. Convert GB to JSON
-        # Output format will be: [ [Poly1_Terms], [Poly2_Terms], ... ]
         json_result = convert_gb_to_json(gb, vars_list)
 
         # 6. Print Result

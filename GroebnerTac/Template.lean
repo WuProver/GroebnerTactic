@@ -37,7 +37,10 @@ example :
   split_ands
   focus
     simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
-    all_goals decide +kernel-- PIT, proof by reflection
+    -- all_goals decide +kernel-- PIT, proof by reflection
+    all_goals {
+      exact MvPolynomial.SortedRepr.eq_iff'.mpr (by decide +kernel)
+    }
   focus
     intro i
     fin_cases i
@@ -158,7 +161,9 @@ example :
   · use [0, 0].get -- spoly f1 f1
     split_ands
     · simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
-      all_goals decide +kernel-- PIT by reflection
+      all_goals {
+        exact MvPolynomial.SortedRepr.eq_iff'.mpr (by decide +kernel)
+      }-- PIT by reflection
     · intro i
       fin_cases i
       all_goals {
@@ -198,64 +203,14 @@ lemma aux {f g r : MvPolynomial σ k} {G : Set (MvPolynomial σ k)} (h : r ∈ I
     exact Submodule.mem_sup_right h
   exact (Submodule.add_mem_iff_right (Ideal.span (insert g G)) h₂).mpr h₁
 
-
-example :
-  Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-    apply le_antisymm
-    focus
-      rw [Ideal.span_le]
-      intro x hx
-      simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
-      rcases hx with (rfl|rfl)
-      focus
-        apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 1 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
-        change _ ∈ (_ : Ideal _)
-        repeat
-          conv in _ ∈ Ideal.span (insert _ _) => {}
-          apply aux
-        apply Ideal.mul_mem_left
-        apply Ideal.mem_span_singleton_self
-      focus
-        apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 0 * X 0 ) (· ∈ _) (by decide +kernel)).mpr
-        change _ ∈ (_ : Ideal _)
-        repeat
-          conv in _ ∈ Ideal.span (insert _ _) => {}
-          apply aux
-        apply Ideal.mul_mem_left
-        apply Ideal.mem_span_singleton_self
-    focus
-      rw [Ideal.span_le]
-      intro x hx
-      simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
-      rcases hx with (rfl|rfl)
-      focus
-        apply (iff_of_eq <| congrArg (a₂ := (- 1) * X 1 ^ 2 + 1 * (X 0 + X 1 ^ 2)) (· ∈ (_ : Ideal _)) (by decide +kernel)).mpr
-        -- change _ ∈ (_ : Ideal _)
-        repeat
-          conv in _ ∈ Ideal.span (insert _ _) => {}
-          apply aux
-        apply Ideal.mul_mem_left
-        apply Ideal.mem_span_singleton_self
-      focus
-        apply (iff_of_eq <| congrArg (a₂ := 1 * X 1 ^ 2 + 0 * (X 0 + X 1 ^ 2)) (· ∈ (_ : Ideal _)) (by decide +kernel)).mpr
-        -- change _ ∈ (_ : Ideal _)
-        repeat
-          conv in _ ∈ Ideal.span (insert _ _) => {}
-          apply aux
-        apply Ideal.mul_mem_left
-        apply Ideal.mem_span_singleton_self
-
-example (a b c d : Int) : 5 * d + 1 * a + 3 * c + 2 * b  ∈ Ideal.span {a, b, c, d} := by
-  submodule_span [1, 2, 3, 5]
-  ring
-
-
 open MvPolynomial MonomialOrder
 
+/- Help prove `f` in `Ideal.span G` -/
 example :  X 0^2 ∈ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
   submodule_span [X 0, -X 0]
   ring
 
+/- `Ideal.span G1` = `Ideal.span G2` -/
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) = Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
   apply le_antisymm
@@ -398,64 +353,5 @@ example :
   have h₆ : (1: MvPolynomial (Fin 3) ℚ) = 0 := by
      exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h₅ h₄).mpr h₃
   simp at h₆
-
-
-/-Intersection of Ideals-/
-example :
-  (Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
-      ⊓
-  Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
-      =
-  Ideal.span {X 0 * X 1} := by
-    let I := Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ))
-    let J := Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
-    let K := Ideal.span ({X 0 * X 1} : Set (MvPolynomial (Fin 2) ℚ))
-
-    let I_lift := I.map (MvPolynomial.rename Option.some)
-    let J_lift := J.map (MvPolynomial.rename Option.some)
-    let K_lift := K.map (MvPolynomial.rename Option.some)
-
-    let t : MvPolynomial (Option (Fin 2)) ℚ := MvPolynomial.X none
-
-    let L := Ideal.span {t} * I_lift ⊔ Ideal.span {1-t} * J_lift
-
-    have h₁ :  I.map (rename some) ⊓ J.map (rename some)
-      = K.map (rename some) := by
-      apply le_antisymm
-      ·
-        sorry
-      · sorry
-    simp [I, J, K] at h₁
-    -- rw [← Ideal.map_inf] at h₁
-    sorry
-
-example :
-  (Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ)) : Ideal (MvPolynomial (Fin 2) ℚ))
-      ⊓
-  Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
-      =
-  Ideal.span {X 0 * X 1} := by
-    let I := Ideal.span ({X 0} : Set (MvPolynomial (Fin 2) ℚ))
-    let J := Ideal.span ({X 1} : Set (MvPolynomial (Fin 2) ℚ))
-    let K := Ideal.span ({X 0 * X 1} : Set (MvPolynomial (Fin 2) ℚ))
-
-    let I_lift := I.map (MvPolynomial.rename Option.some)
-    let J_lift := J.map (MvPolynomial.rename Option.some)
-    let K_lift := K.map (MvPolynomial.rename Option.some)
-
-    let t : MvPolynomial (Option (Fin 2)) ℚ := MvPolynomial.X none
-
-    let L := Ideal.span {t} * I_lift ⊔ Ideal.span {1-t} * J_lift
-
-    have h₁ : (I ⊓ J).map
-       (algebraMap (MvPolynomial (Fin 2) ℚ) (Polynomial ((MvPolynomial (Fin 2) ℚ)))) =
-       K.map (algebraMap (MvPolynomial (Fin 2) ℚ) (Polynomial ((MvPolynomial (Fin 2) ℚ)))):= by
-      apply le_antisymm
-      ·
-        simp [I, J, K]
-        sorry
-      · sorry
-
-    sorry
 
 end
