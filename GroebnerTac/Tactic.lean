@@ -1183,8 +1183,6 @@ elab "base" : tactic  => do
         exact h_gb
       }))
 
-
-
 elab "add_gb_hyp" name:(ident)? G:term : tactic =>
   withMainContext do
 
