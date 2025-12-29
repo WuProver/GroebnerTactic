@@ -181,7 +181,7 @@ example : lex.IsGroebnerBasis ({X 0, X 1} :
   simp at h
   exact h
 
-
+-- cyclic-2
 example :
   lex.IsGroebnerBasis
   ({X 0 + X 1, X 1 ^ 2 + 1} : Set <| MvPolynomial (Fin 2) ℚ)
