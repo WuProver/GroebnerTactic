@@ -18,7 +18,7 @@ Both the library and its accompanying documentation are works in progress.
 3. SageMath to Lean: Lean parses the incoming JSON data into well-defined  intermediate data structures. These structures are then   systematically translated back into `Expr` and  ultimately elaborated  into `Term` objects in Lean, allowing the externally computed results to be integrated into the proof environment.
 4. Kernel Verification: The verification tasks  are reduced to  polynomial identity testing （PIT) problems that are discharged entirely  within the Lean kernel using the internal [computable polynomial representation](https://github.com/WuProver/MonomialOrderedPolynomial).
 
-### Tactic
+### Tactics
 1. `remainder`: Certifies  that the remainder of a polynomial $f$ upon reduction  modulo a set $B$ is $r$.
 2. `basis`: Verifies that a given set $G$ forms a Gröbner basis.
 3. `ideal`: Verifies the equality of two ideals, $I = J$
