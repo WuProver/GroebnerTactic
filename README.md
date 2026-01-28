@@ -1,5 +1,11 @@
 # GroebnerTac
+<<<<<<< Updated upstream
 
+=======
+This repository contains Lean 4 tactics focused on the automated formal verification of Groebner Basis properties and computations.
+
+Our main goal is to create powerful tactics that can automatically prove theorems related to Groebner Basis or the application of Groebner Basis within the Lean 4 theorem prover.
+>>>>>>> Stashed changes
 
 This repository provides Lean 4 tactics for the automated formal verification of properties and computations involving Gröbner bases.
 
@@ -13,10 +19,15 @@ Both the library and its accompanying documentation are works in progress.
 
 ## Introduction
 ### Workflow
+<<<<<<< Updated upstream
 1. Lean to SageMath: We extract mathematical objects (such as  MvPolynomial and generators of Ideals) from the Lean context and employ meta-programming techniques, specifically [Qq](https://github.com/leanprover-community/quote4) matching, or manual pattern matching, to deconstruct and analyze Lean expressions.
 2. External Computation: Gröbner basis–related computations on multivariate polynomials are delegated to SageMath. The computed results are serialized into a structured JSON format and returned to Lean, where they are reinterpreted for subsequent verification.
 3. SageMath to Lean: Lean parses the incoming JSON data into well-defined  intermediate data structures. These structures are then   systematically translated back into `Expr` and  ultimately elaborated  into `Term` objects in Lean, allowing the externally computed results to be integrated into the proof environment.
 4. Kernel Verification: The verification tasks  are reduced to  polynomial identity testing （PIT) problems that are discharged entirely  within the Lean kernel using the internal [computable polynomial representation](https://github.com/WuProver/MonomialOrderedPolynomial).
+=======
+1. Lean to SageMath : We extract mathematical objects (e.g., MvPolynomial, Ideal generators) from the Lean context and employ meta-programming techniques, specifically [Qq](https://github.com/leanprover-community/quote4) matching or manual pattern matching, to deconstruct Lean expressions.
+2. External Computation : We compute some mvpolynomial results related to Gröbner bases in SageMath. Then the results are packaged into a structured JSON format and returned to Lean.
+>>>>>>> Stashed changes
 
 ### Tactics
 1. `remainder`: Certifies  that the remainder of a polynomial $f$ upon reduction  modulo a set $B$ is $r$.
@@ -31,6 +42,7 @@ Here is a refined and consistent version of the **Tactic** section, with clearer
 
 
 
+## Some Example
 
 
 ## Build

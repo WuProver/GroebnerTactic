@@ -429,10 +429,10 @@ partial def parsePoly {u v: Lean.Level}
       pure s.pretty
 
 
-
-#eval parsePoly q(1: MvPolynomial Nat Nat)
+#eval parsePoly q(1 : MvPolynomial Nat Int)
 #eval parsePoly q(X 1 - C (1 / 2): MvPolynomial (Fin 2) ℚ)
 #eval parsePoly q(X 1 - C (1): MvPolynomial (Fin 2) ℚ)
+
 
 run_meta do
   let r ← Mathlib.Meta.NormNum.derive q(1 + 3*2 + 3/4 : ℚ)
@@ -1264,9 +1264,12 @@ def evalGroebnerMembership : Tactic := fun stx => do
       match I with
       | ~q(Ideal.span $I_gens) =>
         let I_gens_list ←  parseSet I_gens
+        logInfo m!"[DEBUG ideal_membership] I_gens_list: {I_gens_list}"
         let f_str ← parsePoly f
+        logInfo m!"[DEBUG ideal_membership] f_str: {f_str}"
 
         let sage_coeff ← runSage (.Idealmem f_str s!"{I_gens_list}")
+        logInfo m!"[DEBUG ideal_membership] sage_coeff: {sage_coeff}"
 
         let coeff_list := Json.parse s!"{sage_coeff}"
         let coeff_list ← parseJson coeff_list
@@ -1610,8 +1613,8 @@ def evalradicalMembership : Tactic := fun stx => do
               $I_gens)) =>
       let f_str ←  parsePoly f
       let I_gens_list ←  parseSet I_gens
-      -- logInfo m!"[DEBUG `radical_membership` f_str] : {f_str}"
-      -- logInfo m!"[DEBUG `radical_membership` I_gens_list] : {I_gens_list}"
+      logInfo m!"[DEBUG `radical_membership` f_str] : {f_str}"
+      logInfo m!"[DEBUG `radical_membership` I_gens_list] : {I_gens_list}"
 
       let n ← runSage (.radical f_str s!"{I_gens_list}")
 
@@ -1619,7 +1622,7 @@ def evalradicalMembership : Tactic := fun stx => do
       let n_expr := mkNatLit n_val
       let n_term ← Lean.PrettyPrinter.delab n_expr
 
-      -- logInfo m!"[DEBUG `radical_membership` n_term] : {n_term}"
+      logInfo m!"[DEBUG `radical_membership` n_term] : {n_term}"
 
 
       evalTactic (← `(tactic|
@@ -1633,8 +1636,6 @@ def evalradicalMembership : Tactic := fun stx => do
       evalTactic (← `(tactic|
           ideal_membership
         ))
-
-      -- logInfo m!"{n}"
 
       pure 0
 

@@ -25,6 +25,7 @@ variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
 
 
 /-Ideal Membership problem-/
+set_option trace.profiler true in
 example :
   X 0 ∈ Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 2) ℚ)) := by
     ideal_membership
@@ -65,6 +66,8 @@ example : 1 ∈ Ideal.span ({X 0, X 1, 1 - X 3 * X 0} : Set <| MvPolynomial (Fin
 example :
   X 0 ^ 3 - X 0 ∈ Ideal.span ({X 0 ^ 2 - 1} : Set (MvPolynomial (Fin 1) ℚ)) := by
   ideal_membership
+
+
 
 /-Radical Ideal Membership problem-/
 example :

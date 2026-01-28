@@ -38,9 +38,7 @@ example :
   focus
     simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
     -- all_goals decide +kernel-- PIT, proof by reflection
-    all_goals {
-      exact MvPolynomial.SortedRepr.eq_iff'.mpr (by decide +kernel)
-    }
+    grind
   focus
     intro i
     fin_cases i
@@ -48,6 +46,7 @@ example :
         -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
         simp only [List.get, Fin.isValue]
         all_goals {
+          · 
           rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
             SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
             ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
@@ -72,7 +71,6 @@ example :
       intro i
       fin_cases i
       all_goals {
-        -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
         simp only [List.get, Fin.isValue]
         all_goals {
           rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
