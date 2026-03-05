@@ -1,14 +1,8 @@
 import Mathlib
 
-import Groebner.Basic
-import Groebner.List
--- import Groebner.Lemma
-
-import MonomialOrderedPolynomial.TreeRepr
-import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
-import MonomialOrderedPolynomial.Ordering
-import MonomialOrderedPolynomial.MvPolynomial
-import MonomialOrderedPolynomial.Polynomial
+import MonomialOrderedPolynomial
+import Groebner.Groebner
+import Groebner.ToMathlib.List
 
 import GroebnerTac.Tactic
 

@@ -1,11 +1,6 @@
-import Groebner.Basic
-import Groebner.List
-
-import MonomialOrderedPolynomial.TreeRepr
-import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
-import MonomialOrderedPolynomial.Ordering
-import MonomialOrderedPolynomial.MvPolynomial
-import MonomialOrderedPolynomial.Polynomial
+import MonomialOrderedPolynomial
+import Groebner.Groebner
+import Groebner.ToMathlib.List
 
 import GroebnerTac.Tactic
 
@@ -25,6 +20,7 @@ open MvPolynomial
 variable {σ : Type*} (m : MonomialOrder σ)
 variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
 
+
 /- The template of the remainder equals to `0` -/
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
@@ -32,7 +28,7 @@ example :
   -- convert set to `Set.image list.get`
   simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
   -- use index
-  rw [isRemainder_range_fin, ← exists_and_right]
+  rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
   use [X 0, X 1 ^ 2, X 2 ^ 3, X 3 ^ 4].get
   split_ands
   focus
@@ -43,16 +39,12 @@ example :
     intro i
     fin_cases i
     all_goals {
-        -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
-        simp only [List.get, Fin.isValue]
-        all_goals {
-          · 
-          rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-            SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-            ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-          decide +kernel
-        }
-      }
+      -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
+      simp only [List.get, Fin.isValue]
+      all_goals
+        exact withBotDegree_le_of_repr_le <| by decide +kernel
+    }
+
   simp
 
 /- The templaye of the remainder does not equal to `0` -/
@@ -61,7 +53,7 @@ example :
       {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
     simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
     -- use index
-    rw [isRemainder_range_fin, ← exists_and_right]
+    rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
     use [X 3 ^ 4, 0].get
     split_ands
     focus
@@ -71,13 +63,10 @@ example :
       intro i
       fin_cases i
       all_goals {
+        -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
         simp only [List.get, Fin.isValue]
-        all_goals {
-          rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-            SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-            ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-          decide +kernel
-        }
+        all_goals
+          exact withBotDegree_le_of_repr_le <| by decide +kernel
       }
     focus
       rw [Function.Surjective.forall (AddEquiv.surjective (SortedFinsupp.lexAddEquiv compare))]
@@ -97,11 +86,13 @@ example :
 example :
     letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
-  rw [buchberger_criterion]
+  -- we change
+  rw [MonomialOrder.IsGroebnerBasis.isGroebnerBasis_iff_isRemainder_sPolynomial_zero]
   simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
     forall_eq_or_imp, forall_eq, sPolynomial_self]
   simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
-  simp_rw [isRemainder_range_fin]
+  simp_rw [IsRemainder.isRemainder_range_fintype]
+
   split_ands
   ·
     focus
@@ -114,12 +105,8 @@ example :
         all_goals {
           -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
           simp only [List.get, Fin.isValue]
-          all_goals {
-            rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-              SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-              ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-            decide +kernel
-          }
+          all_goals
+            exact withBotDegree_le_of_repr_le <| by decide +kernel
         }
   · simp
   · use [0, X 1 ^ 2].get -- spoly f0 f1
@@ -131,12 +118,8 @@ example :
       all_goals {
         -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
         simp only [List.get, Fin.isValue]
-        all_goals {
-          rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-            SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-            ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-          decide +kernel
-        }
+        all_goals
+          exact withBotDegree_le_of_repr_le <| by decide +kernel
       }
   · simp
   · use [0, - X 1 ^ 2].get -- spoly f1 f0
@@ -146,14 +129,10 @@ example :
     · intro i
       fin_cases i
       all_goals {
-        -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
-        simp only [List.get, Fin.isValue]
-        all_goals {
-          rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-            SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-            ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-          decide +kernel
-        }
+          -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
+          simp only [List.get, Fin.isValue]
+          all_goals
+            exact withBotDegree_le_of_repr_le <| by decide +kernel
       }
   · simp
   · use [0, 0].get -- spoly f1 f1
@@ -167,12 +146,8 @@ example :
       all_goals {
         -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
         simp only [List.get, Fin.isValue]
-        all_goals {
-          rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-            SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-            ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-          decide +kernel
-        }
+        all_goals
+          exact withBotDegree_le_of_repr_le <| by decide +kernel
       }
   · simp
 
@@ -258,7 +233,7 @@ example :
     : Set (MvPolynomial (Fin 2) ℚ)) ) := by
       rw [h_ideal]
       exact h_gb
-    apply (isRemainder_zero_iff_mem_ideal_of_isGroebner' h_gb').mp h_rm
+    exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mp rfl
 
 
 example:
@@ -283,7 +258,7 @@ example:
       remainder
     by_contra h_mem
     have eq : X 2 = (0 : MvPolynomial (Fin 3) ℚ ):= by
-      exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h_gb' h_rm).mpr h_mem
+      exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mpr h_mem
     have neq : X 2 ≠ (0 : MvPolynomial (Fin 3) ℚ) := by
       decide +kernel
     contradiction
@@ -349,7 +324,7 @@ example :
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
     basis
   have h₆ : (1: MvPolynomial (Fin 3) ℚ) = 0 := by
-     exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h₅ h₄).mpr h₃
+    exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h₅ h₄).mpr h₃
   simp at h₆
 
 end

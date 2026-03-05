@@ -1,14 +1,9 @@
 import Mathlib
 
-import Groebner.Basic
-import Groebner.List
--- import Groebner.Lemma
 
-import MonomialOrderedPolynomial.TreeRepr
-import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
-import MonomialOrderedPolynomial.Ordering
-import MonomialOrderedPolynomial.MvPolynomial
-import MonomialOrderedPolynomial.Polynomial
+import MonomialOrderedPolynomial
+import Groebner.Groebner
+import Groebner.ToMathlib.List
 
 import GroebnerTac.Tactic
 
@@ -37,5 +32,3 @@ example :
   (X 0 + C 2 * X 1 - C 1) ∈ (Ideal.span ({X 0 + C 2 * X 1 - C 1,
     X 0^2 - X 0 + C 2 * X 1^2} : Set (MvPolynomial (Fin 2) ℚ))).radical := by
     radical_membership
-
-

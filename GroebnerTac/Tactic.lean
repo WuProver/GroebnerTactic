@@ -1,16 +1,11 @@
 import Mathlib
 
-import MonomialOrderedPolynomial.TreeRepr
-import MonomialOrderedPolynomial.SortedAddMonoidAlgebra
-import MonomialOrderedPolynomial.Ordering
-import MonomialOrderedPolynomial.MvPolynomial
-import MonomialOrderedPolynomial.Polynomial
+import MonomialOrderedPolynomial
+import Groebner.Groebner
+import Groebner.ToMathlib.List
 
 import Lean.Meta.Tactic.Grind.Arith.CommRing.Poly
 import Lean.Meta.Tactic.TryThis
-
-import Groebner.Basic
-import Groebner.List
 
 import Mathlib.Tactic
 import Lean
@@ -165,7 +160,6 @@ inductive SageTask where
 
 
 def runSage (task : SageTask) : IO String := do
-
   let (scriptName, scriptArgs) := match task with
     | .remainder poly rem  => ("Remainder.sage", #["-p", poly, "-d", rem])
     | .basis set           => ("Basis.sage",     #["-s", set])
@@ -528,10 +522,10 @@ def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit :
   let runUse := fun x => do Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
 
   evalTactic (← `(tactic|
-     simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+     simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
   ))
   evalTactic (← `(tactic|
-     rw [isRemainder_range_fin, ← exists_and_right]
+     rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
   ))
 
   runUse witness
@@ -549,13 +543,9 @@ def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit :
       intro i
       fin_cases i
       all_goals {
-        simp only [List.get, Fin.isValue]
-        all_goals {
-          rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-            SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-            ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-          decide +kernel
-        }
+       simp only [List.get, Fin.isValue]
+       all_goals
+         exact withBotDegree_le_of_repr_le <| by decide +kernel
       }
   ))
 
@@ -904,7 +894,7 @@ elab "basis" : tactic  => do
       -- logInfo m!"[DEBUG Basis] parsedTermsArray: {parsedTermsArray}"
 
       evalTactic (← `(tactic|
-        rw [buchberger_criterion]
+        rw [MonomialOrder.IsGroebnerBasis.isGroebnerBasis_iff_isRemainder_sPolynomial_zero]
       ))
       evalTactic (← `(tactic|
         simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
@@ -914,7 +904,7 @@ elab "basis" : tactic  => do
         simp only [← Set.range_get_nil, ← Set.range_get_singleton, ← Set.range_get_cons_list]
       ))
       evalTactic (← `(tactic|
-        simp_rw [isRemainder_range_fin]
+        simp_rw [IsRemainder.isRemainder_range_fintype]
       ))
       evalTactic (← `(tactic|
         split_ands
@@ -939,11 +929,10 @@ elab "basis" : tactic  => do
             intro i
             fin_cases i
             all_goals {
-              simp only [List.get]
-              rw [MvPolynomial.SortedRepr.lex_degree_eq', MvPolynomial.SortedRepr.lex_degree_eq',
-                SortedFinsupp.lexOrderIsoLexFinsupp.le_iff_le,
-                ← Std.LawfulLECmp.isLE_iff_le (cmp := compare)]
-              decide +kernel
+              -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
+              simp only [List.get, Fin.isValue]
+              all_goals
+                exact withBotDegree_le_of_repr_le <| by decide +kernel
             }
         ))
         evalTactic (← `(tactic|
@@ -983,6 +972,14 @@ lemma Ideal.insert_le_of_mem_of_le :
     · exact (Ideal.span_singleton_le_iff_mem I).mpr ha
     · exact hB
 
+partial def getObjectsOfSet {u : Level} {M : Q(Type u)} (s : Q(Set $M)) (old : Array Q($M) := #[]) :
+    TacticM (Option (Array Q($M))) := do
+  match s with
+  | ~q(insert $a $s) => getObjectsOfSet s (old ++ #[a])
+    | ~q({$a}) => pure <| .some <| old ++ #[a]
+    | ~q({}) => pure <| .some old
+    | _ => pure <| .none
+
 elab "submodule_span" "[" coeffs:term,* "]" : tactic => do
   let goal ← getMainTarget
   let some goal ← Qq.checkTypeQ goal q(Prop) | throwError "goal isn't a prop"
@@ -1002,13 +999,14 @@ elab "submodule_span" "[" coeffs:term,* "]" : tactic => do
       pure ⟨u_2, R, u_1, M, fun x y ↦ q($x • $y), member, s,
         instSemiring, instMonoid, instModule⟩
     | _ => throwError "unsupported goal"
-  let rec getObjectsOfSet (s : Q(Set $M)) (old : Array Q($M) := #[]) :
-      TacticM <| Option <| Array Q($M) := do
-    match s with
-    | ~q(insert $a $s) => getObjectsOfSet s (old ++ #[a])
-    | ~q({$a}) => pure <| .some <| old ++ #[a]
-    | ~q({}) => pure <| .some old
-    | _ => pure <| .none
+  -- let rec getObjectsOfSet (s : Q(Set $M)) (old : Array Q($M) := #[]) :
+  --     TacticM <| Option <| Array Q($M) := do
+  --   match s with
+  --   | ~q(insert $a $s) => getObjectsOfSet s (old ++ #[a])
+  --   | ~q({$a}) => pure <| .some <| old ++ #[a]
+  --   | ~q({}) => pure <| .some old
+  --   | _ => pure <| .none
+
   let bases := (← getObjectsOfSet basesSet).getD #[]
   let coeffs ← coeffs.getElems.mapM (do withSynthesize <| elabTermEnsuringTypeQ · R)
   if bases.size != coeffs.size then
@@ -1389,7 +1387,7 @@ def evalGroebnerMembership : Tactic := fun stx => do
 
         evalTactic (← `(tactic|
           have eq : ($rm_term : $polyType) = (0 : $polyType) := by
-            exact (remainder_eq_zero_iff_mem_ideal_of_isGroebner' h_gb' h_rm).mpr h_mem
+            exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mpr h_mem
         ))
 
         evalTactic (← `(tactic|
@@ -1741,6 +1739,316 @@ def evalradicalMembership : Tactic := fun stx => do
 
     | _ => throwError "Goal must be of form `f ∈ (Ideal.span S).
     radical` or form of `f ∉ (Ideal.span S).radical`"
+
+
+
+syntax (name := GBSolve) "gb_solve" : tactic
+@[tactic GBSolve]
+def evalGBSolve : Tactic := fun stx => do
+  let goal ← Lean.Elab.Tactic.getMainGoal
+  let t ← goal.getType
+  let t ← checkTypeQ t q(Prop)
+
+  match t with
+  | none => return
+  | some expr =>
+    match expr with
+    | ~q(@(@lex $σ $instLinearOrder $instWellFounded).IsGroebnerBasis
+      _ $R $instCommSemiring $basis $ideal) =>
+      let basis_term ← Lean.PrettyPrinter.delab basis
+      let ideal_term ← Lean.PrettyPrinter.delab ideal
+
+      let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
+
+      -- logInfo m!"[DEBUG Basis Term] : {basis_term}"
+      -- logInfo m!"[DEBUG Ideal Term] : {ideal_term}"
+
+
+      evalTactic (← `(tactic|{
+        have h_gb :
+        lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
+          basis
+        have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
+          ideal
+        simp only [h_ideal] at h_gb
+        exact h_gb
+      }))
+
+    | ~q($f ∈ ($I : @Ideal (@MvPolynomial $σ $R $i) $ring)) =>
+
+      match I with
+      | ~q(Ideal.span $I_gens) =>
+        let I_gens_list ←  parseSet I_gens
+        logInfo m!"[DEBUG ideal_membership] I_gens_list: {I_gens_list}"
+        let f_str ← parsePoly f
+        logInfo m!"[DEBUG ideal_membership] f_str: {f_str}"
+
+        let sage_coeff ← runSage (.Idealmem f_str s!"{I_gens_list}")
+        logInfo m!"[DEBUG ideal_membership] sage_coeff: {sage_coeff}"
+
+        let coeff_list := Json.parse s!"{sage_coeff}"
+        let coeff_list ← parseJson coeff_list
+        let Except.ok coeff_arr := coeff_list.getArr? | failure
+        let coeff_expr_list := coeff_arr.mapM mkPolyExpr
+
+        let coeff_expr_list ← coeff_expr_list
+        let coeff_expr_list := coeff_expr_list.toList
+
+        let coeff_terms : Array Term ← coeff_expr_list.toArray.mapM fun e => do
+          Lean.PrettyPrinter.delab e
+
+        evalTactic (← `(tactic|
+          submodule_span [ $coeff_terms,* ]
+        ))
+
+        evalTactic (← `(tactic|
+          decide +kernel
+        ))
+
+      | _ => throwError "Expect Ideal.span, but got {I}"
+
+    | ~q(¬($f ∈ ($I : @Ideal (@MvPolynomial $σ $R $i) $ring))) =>
+
+      match I with
+      | ~q(Ideal.span $I_gens) =>
+        let f_str ←  parsePoly f
+
+        let I_gens_list ←  parseSet I_gens
+
+        -- logInfo m!"[DBEUG I GENS LIST]{I_gens_list}"
+        let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
+        -- logInfo m!"[GB SAGE RESULT] : {sage_gb}"
+        let gb := Json.parse s!"{sage_gb}"
+        let gb ← parseJson gb
+        let Except.ok gb_arr := gb.getArr? | failure
+
+        let exprArray ← gb_arr.mapM fun jsonElem => mkPolyExpr jsonElem
+
+        let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
+
+        let sage_rm ← runSage (.GRemainder f_str s!"{I_gens_list}")
+        -- logInfo m!"[REMAINDER SAGE RESULT] : {sage_rm}"
+
+        let Except.ok parsed := Lean.Json.parse sage_rm | failure
+        let Except.ok p := Lean.fromJson? (α := Poly.Polynomial) parsed | failure
+        let instOfNat ← Qq.synthInstanceQ q((n : Nat) → OfNat Nat n)
+        let instField ← Qq.synthInstanceQ q(Field ℚ)
+        let rm := p.mkQ q(Nat) instOfNat q(ℚ) instField
+
+        let f_term ← Lean.PrettyPrinter.delab f
+        let I_term ← Lean.PrettyPrinter.delab I
+        let rm_term ← Lean.PrettyPrinter.delab rm
+        -- logInfo m!"[DEBUG f_term] : {f_term}"
+        -- logInfo m!"[DEBUG I_term] : {I_term}"
+        -- logInfo m!"[DEBUG rm_term] : {rm_term}"
+
+        let setSyntax ← mkSetSyntaxFromTerms argsTerms
+
+        -- logInfo m!"[DEBUG `setSyntax`] : {setSyntax}"
+
+        let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
+
+        -- logInfo m!"[DEBUG `polyType`] : {polyType}"
+        evalTactic (← `(tactic|
+          have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
+            simp only [_root_.ne_eq, _root_.one_ne_zero,
+                  _root_.not_false_eq_true,
+                  _root_.div_self, MvPolynomial.C_1,
+                  Fin.isValue, _root_.pow_one, _root_.one_mul,
+                  _root_.zero_add, _root_.div_one,
+                  MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
+            basis
+        ))
+
+        -- logInfo m!"[I Term] {I_term}"
+        -- logInfo m!"[setSyntax] {setSyntax}"
+        -- logInfo m!"[polyType] {polyType}"
+
+        evalTactic (← `(tactic|
+          have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
+            simp only [_root_.ne_eq, _root_.one_ne_zero,
+                  _root_.not_false_eq_true,
+                  _root_.div_self, MvPolynomial.C_1,
+                  Fin.isValue, _root_.pow_one, _root_.one_mul,
+                  _root_.zero_add, _root_.div_one,
+                  MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
+            first | done | ideal
+        ))
+
+        evalTactic (← `(tactic|
+          have h_gb' : lex.IsGroebnerBasis ($setSyntax : Set $polyType) $I_term := by
+            rw [h_ideal]
+            exact h_gb
+        ))
+
+        evalTactic (← `(tactic|
+         have h_rm : lex.IsRemainder ($f_term : $polyType)
+         ($setSyntax : Set $polyType) ($rm_term : $polyType ) := by
+            simp only [_root_.ne_eq, _root_.one_ne_zero,
+                  _root_.not_false_eq_true,
+                  _root_.div_self, MvPolynomial.C_1,
+                  Fin.isValue, _root_.pow_one, _root_.one_mul,
+                  _root_.zero_add, _root_.div_one,
+                  MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
+            remainder
+        ))
+
+        evalTactic (← `(tactic|
+          by_contra h_mem
+        ))
+
+        evalTactic (← `(tactic|
+          have neq : ($rm_term : $polyType) ≠ (0 : $polyType) := by
+            decide +kernel
+        ))
+
+        evalTactic (← `(tactic|
+          have eq : ($rm_term : $polyType) = (0 : $polyType) := by
+            exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mpr h_mem
+        ))
+
+        evalTactic (← `(tactic|
+          contradiction
+        ))
+      | _ => throwError "Expect Ideal.span, but got {I}"
+    | ~q($f ∈ @Ideal.radical
+            (@MvPolynomial $σ $R $i)
+            $ring
+            (@Ideal.span
+              (@MvPolynomial $σ $R $i)
+              (@CommSemiring.toSemiring
+                 (@MvPolynomial $σ $R $i)
+                 $ring)
+              $I_gens)) =>
+      let f_str ←  parsePoly f
+      let I_gens_list ←  parseSet I_gens
+      logInfo m!"[DEBUG `radical_membership` f_str] : {f_str}"
+      logInfo m!"[DEBUG `radical_membership` I_gens_list] : {I_gens_list}"
+
+      let n ← runSage (.radical f_str s!"{I_gens_list}")
+
+      let n_val : Nat := n.trim.toNat!
+      let n_expr := mkNatLit n_val
+      let n_term ← Lean.PrettyPrinter.delab n_expr
+
+      logInfo m!"[DEBUG `radical_membership` n_term] : {n_term}"
+
+
+      evalTactic (← `(tactic|
+          rw [Ideal.mem_radical_iff]
+        ))
+
+      evalTactic (← `(tactic|
+          use $n_term:term
+        ))
+
+      evalTactic (← `(tactic|
+          ideal_membership
+        ))
+
+      pure 0
+
+    | ~q(¬ ($f ∈ @Ideal.radical
+          (@MvPolynomial (Fin $n) $R $i)
+          $ring
+          (@Ideal.span
+            (@MvPolynomial (Fin $n) $R $i)
+            (@CommSemiring.toSemiring
+                (@MvPolynomial (Fin $n) $R $i)
+                $ring)
+            $I_gens))) =>
+      let u_level : Level ← getLevel R
+
+      let σ_new : Q(Type) := q(Fin ($n + 1))
+
+      let n_term : Term ← Lean.PrettyPrinter.delab n
+      let f_term ← Lean.PrettyPrinter.delab f
+      let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial (Fin ($n + 1)) $R)
+
+      let _inst_R ← synthInstanceQ q(CommRing (MvPolynomial (Fin ($n + 1)) $R))
+
+      let one_sub_tf_expr := q(
+        (1 : MvPolynomial (Fin ($n + 1)) $R) -
+         (MvPolynomial.X (Fin.last $n) * (MvPolynomial.rename Fin.castSucc $f))
+      )
+
+      let one_sub_tf_term : Term ← Lean.PrettyPrinter.delab one_sub_tf_expr
+
+      let I_gens_lifted ← liftPolySet n R i I_gens
+      let new_set_expr ← @insertPolyToSetExpr
+          Level.zero
+          u_level
+          σ_new
+          R
+          i
+          one_sub_tf_expr
+          I_gens_lifted
+
+      let new_set_term : Term ← Lean.PrettyPrinter.delab new_set_expr
+
+
+      evalTactic (← `(tactic|
+      let g : Fin $n_term → Fin ($n_term + 1) := Fin.castSucc
+      ))
+
+      evalTactic (← `(tactic|
+      let t : Fin ($n_term + 1) := Fin.last $n_term
+      ))
+
+      evalTactic (← `(tactic|
+      by_contra h
+      ))
+
+      evalTactic (← `(tactic|
+      rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective $n_term)] at h
+      ))
+
+      evalTactic (← `(tactic|
+      rw [Ideal.map_span] at h
+      ))
+
+      evalTactic (← `(tactic|
+      rw [← Ideal.span_union] at h
+      ))
+
+      evalTactic (← `(tactic|
+      conv at h =>
+        repeat rw [Set.image_insert_eq]
+        try rw [Set.image_singleton]
+        try rw [Set.union_singleton]
+      ))
+
+      evalTactic (← `(tactic|
+      dsimp [g, t] at h
+      ))
+
+      evalTactic (← `(tactic|
+      simp only [Fin.isValue, map_add, rename_X, Fin.reduceCastSucc, map_one,
+              Fin.castSucc_zero, Fin.castSucc_one, Fin.castSucc_succ] at h
+      ))
+
+      evalTactic (← `(tactic|
+      have h₁ : 1 ∉ Ideal.span  ($new_set_term : Set <| MvPolynomial (Fin ($n_term + 1)) ℚ) := by
+        conv =>
+          repeat rw [Set.image_insert_eq]
+          try rw [Set.image_singleton]
+          try rw [Set.union_singleton]
+        simp
+        ideal_membership
+      ))
+
+
+      evalTactic (← `(tactic|
+      simp only [Nat.reduceAdd, Fin.reduceLast, Fin.isValue, map_one,
+        Set.image_singleton, rename_X, Fin.castSucc_zero, map_add] at h₁
+      ))
+
+      evalTactic (← `(tactic|
+      exact h₁ h
+      ))
+
+
+    | _ => throwError "The Goal can not match any parttern."
 
 
 

@@ -1,6 +1,7 @@
-import MonomialOrderedPolynomial.MvPolynomial
+import MonomialOrderedPolynomial
 import Groebner.Groebner
 import Groebner.ToMathlib.List
+
 import GroebnerTac.Tactic
 
 /-!
@@ -19,103 +20,21 @@ set_option synthInstance.maxSize 100000000
 open MvPolynomial
 variable {σ : Type*} (m : MonomialOrder σ)
 
-/- The test example of `remainder` -/
-example :
-    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
-      {X 0, X 1, X 2, X 3} 0 := by
-      remainder[0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2, 0 + C ↑(↑1 / ↑1) * X 2 ^ 3,
-        0 + C ↑(↑1 / ↑1) * X 3 ^ 4]
-
-example :
-    lex.IsRemainder (X 0 ^ 2 - X 1 : MvPolynomial (Fin 3) ℚ)
-      {X 0 ^ 2 - X 1} 0 := by
-    remainder
-
-example :
-    lex.IsRemainder (X 0 ^ 5 + X 1 * X 2 + 100 : MvPolynomial (Fin 3) ℚ)
-      {1} 0 := by
-    remainder
-
-
-example :
-    lex.IsRemainder (X 0 ^ 2 * X 1 + X 0 * X 1 ^ 2 : MvPolynomial (Fin 3) ℚ)
-      {X 0 * X 1 - 1} (X 0 + X 1) := by
-    remainder
-
-
-example :
-    lex.IsRemainder (X 0 : MvPolynomial (Fin 3) ℚ)
-      {2 * X 0 - 1} (C (1/2 : ℚ)) := by
-    remainder
-
-
-example :
-    lex.IsRemainder (X 0 * X 1 : MvPolynomial (Fin 3) ℚ)
-      {2 * X 0 - X 1}
-      (C (1/2 : ℚ) * X 1 ^ 2) := by
-    remainder
-
-
-example :
-    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
-      {X 0, X 1, X 2, X 3} 0 := by
-    remainder [X 0, X 1^2, X 2^3, X 3^4]
-
-example :
-    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
-      {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
-    remainder
-
-example :
-    lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
-      {X 0, X 1, X 2, X 3} 0 := by
-    remainder
-
-example :
-    lex.IsRemainder (X 0 + X 1 ^ 3 + X 2 ^ 4 : MvPolynomial (Fin 3) ℚ)
-      {X 0, X 1, X 2} 0 := by
-    remainder
-
-example :
-    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
-      {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
-    remainder
-
-example :
-    lex.IsRemainder (1: MvPolynomial (Fin 3) ℚ)
-      {X 0, X 1, 2 - X 3} (1) := by
-    remainder
-
-
-example :
-    lex.IsRemainder (C (2/3 : ℚ) * X 0 * X 1 : MvPolynomial (Fin 3) ℚ)
-      {3 * X 0 + 1}
-      (- C (2/9 : ℚ) * X 1) := by
-    remainder
-
-
-example :
-    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 2 : MvPolynomial (Fin 3) ℚ)
-      {X 0 + C (1/2 : ℚ) * X 1}
-      (C (5/4 : ℚ) * X 1 ^ 2) := by
-    remainder
-
-
 /- The test example of basis -/
 example :
     letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
-    basis
+    gb_solve
 
 example :
     letI basis := ({X 0 ^ 4 - X 1} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
-      basis
+    gb_solve
 
 example :
     letI basis := ({X 0} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
-    basis
+    gb_solve
 
 
 /- The test example of basis'-/

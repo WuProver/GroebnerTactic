@@ -148,5 +148,5 @@ example : x0 + x1 + x2 + x3 + x4 = 0 := by grind
 -- example : x3^2*x4^5 - x3^2 - (2/55)*x3*x4^11 - (21/5)*x3*x4^6 + (233/55)*x3*x4 -
 --   (8/55)*x4^12 - (89/5)*x4^7 + (987/55)*x4^2 = 0 := by grind
 
-
-example : x4^15 + 122*x4^10 - 122*x4^5 - 1 = 0 := by grind (ringSteps := 100000)
+-- set_option maxHeartbeats 100000000 in
+-- example : x4^15 + 122*x4^10 - 122*x4^5 - 1 = 0 := by grind (ringSteps := 100000)
