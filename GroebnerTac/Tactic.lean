@@ -1249,7 +1249,7 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
 
 syntax (name := groebnerMembership) "ideal_membership" : tactic
 @[tactic groebnerMembership]
-def evalGroebnerMembership : Tactic := fun stx => do
+def evalGroebnerMembership : Tactic := fun _stx => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
@@ -1444,7 +1444,7 @@ partial def liftPolySet {u : Level} (n : Q(Nat)) (R : Q(Type u))
 open MvPolynomial MonomialOrder Ideal
 
 variable {K : Type*} [Field K] {σ : Type*}
-variable {T : Type*} 
+variable {T : Type*}
 variable {R : Type*} [CommRing R] {σ : Type*}
 
 
@@ -1585,7 +1585,7 @@ theorem Rabinovich_method'
 
 syntax (name := radicalMembership) "radical_membership" : tactic
 @[tactic radicalMembership]
-def evalradicalMembership : Tactic := fun stx => do
+def evalradicalMembership : Tactic := fun _stx => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
@@ -1610,7 +1610,7 @@ def evalradicalMembership : Tactic := fun stx => do
 
       let n ← runSage (.radical f_str s!"{I_gens_list}")
 
-      let n_val : Nat := n.trim.toNat!
+      let n_val : Nat := n.trimAscii.toNat!
       let n_expr := mkNatLit n_val
       let n_term ← Lean.PrettyPrinter.delab n_expr
 
@@ -1832,7 +1832,7 @@ def evalGBSolve : Tactic := fun stx => do
 
       let n ← runSage (.radical f_str s!"{I_gens_list}")
 
-      let n_val : Nat := n.trim.toNat!
+      let n_val : Nat := n.trimAscii.toNat!
       let n_expr := mkNatLit n_val
       let n_term ← Lean.PrettyPrinter.delab n_expr
 
@@ -2093,17 +2093,7 @@ def evalGBSolve : Tactic := fun stx => do
 
     | _ => throwError "The Goal can not match any parttern."
 
-
-
 end IsRemainder
-
-
-open MvPolynomial MonomialOrder
-
-
-namespace Mathlib.Tactic.IsGroebner
-
-end IsGroebner
 
 end Tactic
 
