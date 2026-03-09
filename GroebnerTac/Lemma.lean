@@ -14,9 +14,6 @@ open MvPolynomial MonomialOrder Ideal
 variable {R : Type*} [CommRing R] {σ : Type*}
 variable {K : Type*} [Field K] {σ : Type*}
 
-#check lex.IsGroebnerBasis
-
-set_option maxHeartbeats 2000000 in
 theorem Rabinovich_method (I : Ideal (MvPolynomial σ K)) (f : MvPolynomial σ K) :
     f ∈ I.radical ↔
     1 ∈
@@ -25,8 +22,7 @@ theorem Rabinovich_method (I : Ideal (MvPolynomial σ K)) (f : MvPolynomial σ K
   let R := MvPolynomial σ K
   let R_t := MvPolynomial (Option σ) K
   constructor
-  ·
-    intro h
+  · intro h
     rcases h with ⟨n, hn⟩
     have eq : (1 : MvPolynomial (Option σ) K) =
     (1 - ((X none) * (rename Option.some f)) ^ n) +
@@ -46,23 +42,18 @@ theorem Rabinovich_method (I : Ideal (MvPolynomial σ K)) (f : MvPolynomial σ K
       apply Ideal.mul_mem_left
       rw [← map_pow]
       exact Ideal.mem_map_of_mem (rename some) hn
-  ·
-    intro h
+  · intro h
     let R_f := Localization.Away f
     let inv_f : R_f := IsLocalization.mk' R_f 1 ⟨f, Submonoid.mem_powers _⟩
-
     let φ : R_t →+* R_f := (aeval (fun o => match o with
       | some i => algebraMap R R_f (X i)
       | none   => inv_f
     )).toRingHom
-
     have kill_gen : φ (1 - X none * rename Option.some f) = 0 := by
       simp only [map_sub, map_one, map_mul]
-
       have val_t : φ (X none) = inv_f := by
-        simp [φ]
+        simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe, φ]
         rw [aeval_X]
-
       have val_f : φ (rename Option.some f) = algebraMap R R_f f := by
         dsimp [φ]
         rw [MvPolynomial.aeval_rename]
@@ -79,19 +70,15 @@ theorem Rabinovich_method (I : Ideal (MvPolynomial σ K)) (f : MvPolynomial σ K
         intro g
         apply MvPolynomial.induction_on g
         · intro c
-          simp [AlgHom.commutes]
+          simp only [algHom_C]
           exact rfl
-        ·
-          intro p q hp hq
+        · intro p q hp hq
           simp [map_add, hp, hq]
-        ·
-          intro p i hp
+        · intro p i hp
           simp [map_mul, hp]
-
       rw [val_t, val_f]
       rw [IsLocalization.mk'_spec]
       simp
-
     have h_image : (1 : R_f) ∈ I.map (algebraMap R R_f) := by
       rw [← map_one φ]
       have step := Ideal.mem_map_of_mem φ h
@@ -107,22 +94,20 @@ theorem Rabinovich_method (I : Ideal (MvPolynomial σ K)) (f : MvPolynomial σ K
       · intro a
         simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_comp, Function.comp_apply]
         erw [MvPolynomial.rename_C]
-        simp [φ]
+        simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe, φ]
         rw [MvPolynomial.aeval_C]
         exact rfl
-
       · intro p q hp hq
-        simp
+        simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_comp, Function.comp_apply, map_add]
         erw [hp, hq]
-      ·
-        intro p hp hq
+      · intro p hp hq
         simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_comp, Function.comp_apply, map_mul]
         erw [hq]
         congr 1
         dsimp
         change φ (rename some (X hp)) = _
         rw [MvPolynomial.rename_X]
-        simp [φ]
+        simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_coe, φ]
         rw [MvPolynomial.aeval_X]
     rw [IsLocalization.mem_map_algebraMap_iff (Submonoid.powers f) R_f] at h_image
     rcases h_image with ⟨⟨g, ⟨l, hl⟩⟩, hg⟩
@@ -137,8 +122,8 @@ theorem Rabinovich_method (I : Ideal (MvPolynomial σ K)) (f : MvPolynomial σ K
     rw [hn, h_and]
     exact Ideal.mul_mem_left I (↑c) g.2
 
-variable {T : Type*} [DecidableEq T]
-set_option maxHeartbeats 2000000 in
+variable {T : Type*}
+
 theorem Rabinovich_method'
     (g : σ → T) (t : T)
     (h_disj : ∀ a, g a ≠ t)
@@ -152,8 +137,7 @@ theorem Rabinovich_method'
   let R := MvPolynomial σ K
   let R_t := MvPolynomial T K
   constructor
-  ·
-    intro h
+  · intro h
     rcases h with ⟨n, hn⟩
     have eq : (1 : R_t) =
       (1 - ((X t) * (rename g f)) ^ n) +
@@ -161,33 +145,27 @@ theorem Rabinovich_method'
       ring
     nth_rw 2 [eq]
     apply Ideal.add_mem
-    ·
-      apply Ideal.mem_sup_right
+    · apply Ideal.mem_sup_right
       have l₁: 1 - (X t) * (rename g f) ∣ 1 - (X t * (rename g) f) ^ n := by
         exact one_sub_dvd_one_sub_pow (X t * (rename g) f) n
       rcases l₁ with ⟨p, hp⟩
       rw [hp]
       apply Ideal.mul_mem_right
       exact Ideal.mem_span_singleton_self (1 - X t * (rename g) f)
-    ·
-      apply Ideal.mem_sup_left
-      rw [mul_pow]
+    · apply Ideal.mem_sup_left
+      rw [_root_.mul_pow]
       apply Ideal.mem_map_of_mem (rename g) at hn
       rw [map_pow] at hn
       apply Ideal.mul_mem_left
       convert hn using 1
-
-  ·
-    intro h
+  · intro h
     let R_f := Localization.Away f
     let inv_f : R_f := IsLocalization.mk' R_f 1 ⟨f, Submonoid.mem_powers _⟩
-
     let φ_func : T → R_f := fun x ↦
       if h_eq : x = t then inv_f
       else
         if h_ran : x ∈ Set.range g then algebraMap R R_f (X (Classical.choose h_ran))
         else 0
-
     let φ : R_t →+* R_f := (aeval φ_func).toRingHom
     have kill_gen : φ (1 - X t * rename g f) = 0 := by
       simp only [map_sub, map_one, map_mul]
@@ -195,7 +173,6 @@ theorem Rabinovich_method'
         dsimp [φ, φ_func]
         rw [aeval_X]
         simp only [if_true]
-
       have val_f : φ (rename g f) = algebraMap R R_f f := by
         dsimp [φ]
         rw [MvPolynomial.aeval_rename]
@@ -203,31 +180,28 @@ theorem Rabinovich_method'
           ext i
           dsimp [φ_func]
           split_ifs with h1 h2
-          ·
-            exfalso
+          · exfalso
             exact h_disj i h1
-          ·
-            congr
+          · congr
             apply h_inj
             exact Classical.choose_spec h2
-          ·
-            exfalso
+          · exfalso
             exact h2 (Set.mem_range_self i)
         rw [h_comp]
-        change (MvPolynomial.aeval (fun i ↦ algebraMap R R_f (X i))).toRingHom f = (algebraMap R R_f) f
+        change (MvPolynomial.aeval (fun i ↦ algebraMap R R_f (X i))).toRingHom f
+          = (algebraMap R R_f) f
         congr 1
-        simp
+        simp only [AlgHom.toRingHom_eq_coe]
         apply MvPolynomial.ringHom_ext
         · intro r
-          simp
+          simp only [RingHom.coe_coe, algHom_C]
           exact rfl
         · intro i
-          simp
+          simp only [RingHom.coe_coe, aeval_X]
           exact rfl
       rw [val_t, val_f]
       rw [IsLocalization.mk'_spec]
       simp
-
     have h_image : (1 : R_f) ∈ I.map (algebraMap R R_f) := by
       rw [← map_one φ]
       have step := Ideal.mem_map_of_mem φ h
@@ -247,7 +221,7 @@ theorem Rabinovich_method'
         rw [MvPolynomial.aeval_C]
         exact rfl
       · intro p q hp hq
-        simp
+        simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_comp, Function.comp_apply, map_add]
         erw [hp, hq]
       · intro p i hp
         simp only [AlgHom.toRingHom_eq_coe, RingHom.coe_comp, Function.comp_apply, map_mul]
@@ -264,11 +238,9 @@ theorem Rabinovich_method'
         congr 1
         apply h_inj
         exact Classical.choose_spec h_ran
-
     rw [IsLocalization.mem_map_algebraMap_iff (Submonoid.powers f) R_f] at h_image
     rcases h_image with ⟨⟨g_val, ⟨l, hl⟩⟩, hg⟩
-
-    rw [one_mul] at hg
+    rw [_root_.one_mul] at hg
     rw [IsLocalization.eq_iff_exists (Submonoid.powers f) R_f] at hg
     obtain ⟨c, h_and⟩ := hg
     dsimp at h_and
@@ -280,12 +252,10 @@ theorem Rabinovich_method'
     exact Ideal.mul_mem_left I (↑c) g_val.2
 
 
-
 example :
   X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   let g : Fin 3 → Fin 4 := Fin.castSucc
   let t : Fin 4 := Fin.last 3
-
   by_contra h
   rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
   rw [Ideal.map_span] at h
@@ -293,11 +263,12 @@ example :
   rw [Set.image_singleton, Set.singleton_union] at h
   simp only [rename_X,  t] at h
   dsimp [g, t] at h
-  simp at h
-  have h₁ : 1 ∉ Ideal.span  ({X 0 + X 1, 1 - X (Fin.last 3) * (rename Fin.castSucc) (X 0)} : Set <| MvPolynomial (Fin 4) ℚ) := by
-    simp
+  simp only [Fin.isValue, map_add, rename_X, Fin.castSucc_zero, Fin.castSucc_one] at h
+  have h₁ : 1 ∉ Ideal.span  ({X 0 + X 1, 1 - X (Fin.last 3) * (rename Fin.castSucc) (X 0)}
+    : Set <| MvPolynomial (Fin 4) ℚ) := by
+    simp only [Fin.isValue, Nat.reduceAdd, Fin.reduceLast, rename_X, Fin.castSucc_zero]
     ideal_membership
-  simp at h₁
+  simp only [Fin.isValue, Nat.reduceAdd, Fin.reduceLast, rename_X, Fin.castSucc_zero] at h₁
   exact h₁ h
 
 variable {n : ℕ} {R : Type*} [CommRing R]
@@ -317,7 +288,6 @@ example :
   X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   let g : Fin 3 → Fin 4 := Fin.castSucc
   let t : Fin 4 := Fin.last 3
-
   by_contra h
   rw [Rabinovich_method' g t Fin.castSucc_ne_last (Fin.castSucc_injective 3)] at h
   rw [Ideal.map_span] at h
@@ -326,14 +296,12 @@ example :
       repeat rw [Set.image_insert_eq]
       try rw [Set.image_singleton]
       try rw [Set.union_singleton]
-
   dsimp [g, t] at h
   simp only [Fin.isValue, map_add, rename_X,
               Fin.castSucc_zero, Fin.castSucc_one] at h
   have h₁ : 1 ∉ Ideal.span ({1 - X 3 * X 0, X 0 + X 1} : Set (MvPolynomial (Fin 4) ℚ)) := by
     ideal_membership
   exact h₁ h
-
 
 
 
