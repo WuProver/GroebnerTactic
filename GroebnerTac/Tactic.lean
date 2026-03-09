@@ -1272,7 +1272,6 @@ def evalGroebnerMembership : Tactic := fun _stx => do
 
         let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-        -- logInfo m!"[DEBUG `polyType`] : {polyType}"
         evalTactic (← `(tactic|
           have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
             simp only [_root_.ne_eq, _root_.one_ne_zero,
@@ -1283,10 +1282,6 @@ def evalGroebnerMembership : Tactic := fun _stx => do
                   MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
             basis
         ))
-
-        -- logInfo m!"[I Term] {I_term}"
-        -- logInfo m!"[setSyntax] {setSyntax}"
-        -- logInfo m!"[polyType] {polyType}"
 
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
@@ -1544,17 +1539,12 @@ def evalradicalMembership : Tactic := fun _stx => do
               $I_gens)) =>
       let f_str ←  parsePoly f
       let I_gens_list ←  parseSet I_gens
-      -- logInfo m!"[DEBUG `radical_membership` f_str] : {f_str}"
-      -- logInfo m!"[DEBUG `radical_membership` I_gens_list] : {I_gens_list}"
 
       let n ← runSage (.radical f_str s!"{I_gens_list}")
 
       let n_val : Nat := n.trimAscii.toNat!
       let n_expr := mkNatLit n_val
       let n_term ← Lean.PrettyPrinter.delab n_expr
-
-      -- logInfo m!"[DEBUG `radical_membership` n_term] : {n_term}"
-
 
       evalTactic (← `(tactic|
           rw [Ideal.mem_radical_iff]
@@ -1741,10 +1731,6 @@ def evalGBSolve : Tactic := fun stx => do
 
       let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-      -- logInfo m!"[DEBUG Basis Term] : {basis_term}"
-      -- logInfo m!"[DEBUG Ideal Term] : {ideal_term}"
-
-
       evalTactic (← `(tactic|{
         have h_gb :
         lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
@@ -1766,17 +1752,12 @@ def evalGBSolve : Tactic := fun stx => do
               $I_gens)) =>
       let f_str ←  parsePoly f
       let I_gens_list ←  parseSet I_gens
-      -- logInfo m!"[DEBUG `radical_membership` f_str] : {f_str}"
-      -- logInfo m!"[DEBUG `radical_membership` I_gens_list] : {I_gens_list}"
 
       let n ← runSage (.radical f_str s!"{I_gens_list}")
 
       let n_val : Nat := n.trimAscii.toNat!
       let n_expr := mkNatLit n_val
       let n_term ← Lean.PrettyPrinter.delab n_expr
-
-      -- logInfo m!"[DEBUG `radical_membership` n_term] : {n_term}"
-
 
       evalTactic (← `(tactic|
           rw [Ideal.mem_radical_iff]
@@ -1896,12 +1877,9 @@ def evalGBSolve : Tactic := fun stx => do
       match I with
       | ~q(Ideal.span $I_gens) =>
         let I_gens_list ←  parseSet I_gens
-        -- logInfo m!"[DEBUG ideal_membership] I_gens_list: {I_gens_list}"
         let f_str ← parsePoly f
-        -- logInfo m!"[DEBUG ideal_membership] f_str: {f_str}"
 
         let sage_coeff ← runSage (.Idealmem f_str s!"{I_gens_list}")
-        -- logInfo m!"[DEBUG ideal_membership] sage_coeff: {sage_coeff}"
 
         let coeff_list := Json.parse s!"{sage_coeff}"
         let coeff_list ← parseJson coeff_list
@@ -1932,9 +1910,7 @@ def evalGBSolve : Tactic := fun stx => do
 
         let I_gens_list ←  parseSet I_gens
 
-        -- logInfo m!"[DBEUG I GENS LIST]{I_gens_list}"
         let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
-        -- logInfo m!"[GB SAGE RESULT] : {sage_gb}"
         let gb := Json.parse s!"{sage_gb}"
         let gb ← parseJson gb
         let Except.ok gb_arr := gb.getArr? | failure
@@ -1944,7 +1920,6 @@ def evalGBSolve : Tactic := fun stx => do
         let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
 
         let sage_rm ← runSage (.GRemainder f_str s!"{I_gens_list}")
-        -- logInfo m!"[REMAINDER SAGE RESULT] : {sage_rm}"
 
         let Except.ok parsed := Lean.Json.parse sage_rm | failure
         let Except.ok p := Lean.fromJson? (α := Poly.Polynomial) parsed | failure
@@ -1955,17 +1930,11 @@ def evalGBSolve : Tactic := fun stx => do
         let f_term ← Lean.PrettyPrinter.delab f
         let I_term ← Lean.PrettyPrinter.delab I
         let rm_term ← Lean.PrettyPrinter.delab rm
-        -- logInfo m!"[DEBUG f_term] : {f_term}"
-        -- logInfo m!"[DEBUG I_term] : {I_term}"
-        -- logInfo m!"[DEBUG rm_term] : {rm_term}"
 
         let setSyntax ← mkSetSyntaxFromTerms argsTerms
 
-        -- logInfo m!"[DEBUG `setSyntax`] : {setSyntax}"
-
         let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-        -- logInfo m!"[DEBUG `polyType`] : {polyType}"
         evalTactic (← `(tactic|
           have h_gb : lex.IsGroebnerBasis ($setSyntax : Set $polyType) (Ideal.span $setSyntax) := by
             simp only [_root_.ne_eq, _root_.one_ne_zero,
@@ -1976,10 +1945,6 @@ def evalGBSolve : Tactic := fun stx => do
                   MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
             basis
         ))
-
-        -- logInfo m!"[I Term] {I_term}"
-        -- logInfo m!"[setSyntax] {setSyntax}"
-        -- logInfo m!"[polyType] {polyType}"
 
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
