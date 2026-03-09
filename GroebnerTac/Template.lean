@@ -25,26 +25,21 @@ variable {s : σ →₀ ℕ} {k : Type*} [Field k] {R : Type*} [CommRing R]
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
       {X 0, X 1, X 2, X 3} 0 := by
-  -- convert set to `Set.image list.get`
   simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
-  -- use index
   rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
   use [X 0, X 1 ^ 2, X 2 ^ 3, X 3 ^ 4].get
   split_ands
   focus
-    simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
-    -- all_goals decide +kernel-- PIT, proof by reflection
+    simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
     grind
   focus
     intro i
     fin_cases i
     all_goals {
-      -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
       simp only [List.get, Fin.isValue]
       all_goals
         exact withBotDegree_le_of_repr_le <| by decide +kernel
     }
-
   simp
 
 /- The templaye of the remainder does not equal to `0` -/
@@ -52,18 +47,16 @@ example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 6) ℚ)
       {X 3, X 4 + X 5} (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4) := by
     simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
-    -- use index
     rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
     use [X 3 ^ 4, 0].get
     split_ands
     focus
-      simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
-      try grind-- PIT, we will rely on reflection
+      simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+      try grind
     focus
       intro i
       fin_cases i
       all_goals {
-        -- simp? [-List.get_eq_getElem, List.get, -degree_mul', -map_add]
         simp only [List.get, Fin.isValue]
         all_goals
           exact withBotDegree_le_of_repr_le <| by decide +kernel
@@ -86,16 +79,13 @@ example :
 example :
     letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
-  -- we change
   rw [MonomialOrder.IsGroebnerBasis.isGroebnerBasis_iff_isRemainder_sPolynomial_zero]
   simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
     forall_eq_or_imp, forall_eq, sPolynomial_self]
   simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
   simp_rw [IsRemainder.isRemainder_range_fintype]
-
   split_ands
-  ·
-    focus
+  · focus
       use [0, 0].get -- spoly f0 f0
       split_ands
       · simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
@@ -191,24 +181,20 @@ example :
     intro x hx
     simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
     rcases hx with (rfl|rfl)
-    ·
-      change _ ∈ (_ : Ideal _)
+    · change _ ∈ (_ : Ideal _)
       submodule_span [1, 1]
       decide +kernel
-    ·
-      change _ ∈ (_ : Ideal _)
+    · change _ ∈ (_ : Ideal _)
       submodule_span [0, 1]
       decide +kernel
   · rw [Ideal.span_le]
     intro x hx
     simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
     rcases hx with (rfl|rfl)
-    ·
-      change _ ∈ (_ : Ideal _)
+    · change _ ∈ (_ : Ideal _)
       submodule_span [1, -1]
       ring
-    ·
-      change _ ∈ (_ : Ideal _)
+    · change _ ∈ (_ : Ideal _)
       submodule_span [0, 1]
       decide +kernel
 
@@ -219,7 +205,6 @@ example :
       {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} 0 := by
       simp
       remainder
-      -- remainder
     have h_gb : letI basis := ({0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set <| MvPolynomial (Fin 2) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis ) := by
       simp
@@ -251,7 +236,6 @@ example:
       Set (MvPolynomial (Fin 3) ℚ)) ) := by
       rw [l_ideal]
       exact h_gb
-      -- norm_cast at h₁
     have h_rm : lex.IsRemainder (X 2: MvPolynomial (Fin 3) ℚ)
       {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} (X 2) := by
       simp
