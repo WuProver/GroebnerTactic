@@ -1,1 +1,4 @@
 /.lake
+*.ipynb
+/.venv
+__pycache__/

@@ -30,6 +30,7 @@ example :
   use [X 0, X 1 ^ 2, X 2 ^ 3, X 3 ^ 4].get
   split_ands
   focus
+    set_option backward.isDefEq.respectTransparency false in
     simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
     grind
   focus
@@ -51,6 +52,7 @@ example :
     use [X 3 ^ 4, 0].get
     split_ands
     focus
+      set_option backward.isDefEq.respectTransparency false in
       simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
       try grind
     focus
@@ -88,7 +90,8 @@ example :
   · focus
       use [0, 0].get -- spoly f0 f0
       split_ands
-      · simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
+      · set_option backward.isDefEq.respectTransparency false in
+        simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
         all_goals decide +kernel-- PIT by reflection
       · intro i
         fin_cases i
@@ -101,7 +104,8 @@ example :
   · simp
   · use [0, X 1 ^ 2].get -- spoly f0 f1
     split_ands
-    · simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+    · set_option backward.isDefEq.respectTransparency false in
+      simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
       all_goals decide +kernel-- PIT by reflection
     · intro i
       fin_cases i
@@ -114,7 +118,8 @@ example :
   · simp
   · use [0, - X 1 ^ 2].get -- spoly f1 f0
     split_ands
-    · simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
+    · set_option backward.isDefEq.respectTransparency false in
+      simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
       all_goals decide +kernel
     · intro i
       fin_cases i
@@ -127,7 +132,8 @@ example :
   · simp
   · use [0, 0].get -- spoly f1 f1
     split_ands
-    · simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
+    · set_option backward.isDefEq.respectTransparency false in
+      simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
       all_goals {
         exact MvPolynomial.SortedRepr.eq_iff'.mpr (by decide +kernel)
       }-- PIT by reflection

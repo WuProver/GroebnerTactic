@@ -147,7 +147,7 @@ open Qq in
 
 
 /-
-In this section, we define the function to run Sage scripts
+We define the function to run Sage scripts
 -/
 inductive SageTask where
   | remainder (poly remainder : String)
@@ -197,10 +197,65 @@ def runSage (task : SageTask) : IO String := do
 
   return stdout
 
+def runSageCode (code : String) : IO String.Slice := do
+  let out ← IO.Process.output {
+    cmd := "./.venv/bin/python",
+    args := #["Runner/sage_runner.py", code]
+  }
+
+  if out.exitCode == 0 then
+    return out.stdout.trimAscii
+  else
+    throw <| IO.userError s!"SageCell 执行失败: {out.stderr}"
+
+def runner : IO Unit := do
+  IO.println "正在向 SageMath 提交请求..."
+  try
+    let result ← runSageCode "factorial(3)"
+    IO.println s!"计算结果:\n{result}"
+  catch e =>
+    IO.println e.toString
+
+def runSage' (task : SageTask) : IO String.Slice := do
+  let (scriptName, scriptArgs) := match task with
+    | .remainder poly rem  => ("Remainder.sage", #["-p", poly, "-d", rem])
+    | .basis set           => ("Basis.sage",     #["-s", set])
+    | .ideal genI genJ     => ("Ideal.sage",     #["-I", genI, "-J", genJ])
+    | .GBasis set          => ("GBasis.sage",    #["-s", set])
+    | .GRemainder poly set => ("GRemainder.sage", #["-p", poly, "-s", set])
+    | .radical poly set    => ("Radical.sage",  #["-p", poly, "-s", set])
+    | .Idealmem poly set   => ("Idealmem.sage", #["-p", poly, "-s", set])
+
+  let cwd ← IO.currentDir
+  let path := cwd / "Sage" / scriptName
+
+  if not (← path.pathExists) then
+    throw <| IO.userError s!"could not find sage script {scriptName}"
+
+  let code ← IO.FS.readFile path
+  -- IO.println s!"Running Sage script {scriptName} with code:\n{code}"
+  IO.println s!"xxxxxx{scriptArgs}"
+  let out ← IO.Process.output {
+    cmd := "./.venv/bin/python",
+    args := #["-c", code] ++ scriptArgs
+  }
+
+  if out.exitCode == 0 then
+    if !out.stderr.isEmpty then
+      IO.println s!"Sage Warning: {out.stderr}"
+    return out.stdout.trimAscii
+  else
+    throw <| IO.userError s!"Sage Script {scriptName} Exact fail ({out.exitCode}): {out.stderr}"
+
 def testRemainder : IO String :=
   runSage (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
 
+def testRemainder' : IO String.Slice :=
+  runSage' (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
+
 #eval testRemainder
+
+-- #eval testRemainder'
 
 
 /-
@@ -533,6 +588,7 @@ def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit :
 
   evalTactic (← `(tactic|
     focus
+      set_option backward.isDefEq.respectTransparency false in
       simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
       all_goals decide +kernel
   ))
@@ -753,6 +809,7 @@ elab "remainder_zero" : tactic => do
       ))
       evalTactic (← `(tactic|
         focus
+          set_option backward.isDefEq.respectTransparency false in
           simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
           all_goals decide +kernel
       ))
@@ -819,6 +876,7 @@ elab "remainder_neq_zero" : tactic => do
       ))
       evalTactic (← `(tactic|
         focus
+          set_option backward.isDefEq.respectTransparency false in
           simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
           try grind-- PIT, we will rely on reflection
       ))
@@ -903,6 +961,7 @@ elab "basis" : tactic  => do
         ))
         evalTactic (← `(tactic|
           focus
+            set_option backward.isDefEq.respectTransparency false in
             simp [Fin.univ_succ, -List.get_eq_getElem, List.get] -- convert sum to add
             -- with_unfolding_all decide
             all_goals decide +kernel-- PIT by reflection
@@ -1461,11 +1520,10 @@ theorem Rabinovich_method'
           exact rfl
         · intro i
           simp only [RingHom.coe_coe, aeval_X]
-          exact rfl
       rw [val_t, val_f]
       rw [IsLocalization.mk'_spec]
-      simp
-
+      simp only [map_one]
+      exact sub_self 1
     have h_image : (1 : R_f) ∈ I.map (algebraMap R R_f) := by
       rw [← map_one φ]
       have step := Ideal.mem_map_of_mem φ h
