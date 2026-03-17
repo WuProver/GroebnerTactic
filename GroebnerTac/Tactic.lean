@@ -1797,10 +1797,6 @@ def evalGBSolve : Tactic := fun stx => do
 
       let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
-      logInfo m!"Basis Term: {basis_term}"
-      logInfo m!"Ideal Term: {ideal_term}"
-      logInfo m!"PolyType: {polyType}"
-
       evalTactic (← `(tactic|{
         have h_gb :
         lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
