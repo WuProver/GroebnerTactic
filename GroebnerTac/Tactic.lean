@@ -978,6 +978,10 @@ elab "basis" : tactic  => do
         ))
         evalTactic (← `(tactic|
         · simp))
+      evalTactic (← `(tactic| simp))
+      let gs ← getUnsolvedGoals
+      unless gs.isEmpty do
+        evalTactic (← `(tactic| decide +kernel))
 
 
 
@@ -1163,10 +1167,12 @@ elab "basis'" : tactic  => do
         lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
           basis
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
-          ideal
+          simp
+          -- ideal
         simp only [h_ideal] at h_gb
         exact h_gb
       }))
+
 
 
 elab "base" : tactic  => do
@@ -1382,7 +1388,7 @@ def evalGroebnerMembership : Tactic := fun _stx => do
 
         evalTactic (← `(tactic|
           have eq : ($rm_term : $polyType) = (0 : $polyType) := by
-            exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mpr h_mem
+            exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal h_gb' h_rm).mpr h_mem
         ))
 
         evalTactic (← `(tactic|
@@ -1789,11 +1795,23 @@ def evalGBSolve : Tactic := fun stx => do
 
       let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial $σ $R)
 
+      logInfo m!"Basis Term: {basis_term}"
+      logInfo m!"Ideal Term: {ideal_term}"
+      logInfo m!"PolyType: {polyType}"
+
       evalTactic (← `(tactic|{
         have h_gb :
         lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
           basis
+          -- sorry
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
+          -- simp only [_root_.ne_eq, _root_.one_ne_zero,
+          --         _root_.not_false_eq_true,
+          --         _root_.div_self, MvPolynomial.C_1,
+          --         Fin.isValue, _root_.pow_one, _root_.one_mul,
+          --         _root_.zero_add, _root_.div_one,
+          --         MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
+          -- first | done | ideal
           ideal
         simp only [h_ideal] at h_gb
         exact h_gb
@@ -2006,13 +2024,14 @@ def evalGBSolve : Tactic := fun stx => do
 
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
-            simp only [_root_.ne_eq, _root_.one_ne_zero,
-                  _root_.not_false_eq_true,
-                  _root_.div_self, MvPolynomial.C_1,
-                  Fin.isValue, _root_.pow_one, _root_.one_mul,
-                  _root_.zero_add, _root_.div_one,
-                  MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
-            first | done | ideal
+            -- simp only [_root_.ne_eq, _root_.one_ne_zero,
+            --       _root_.not_false_eq_true,
+            --       _root_.div_self, MvPolynomial.C_1,
+            --       Fin.isValue, _root_.pow_one, _root_.one_mul,
+            --       _root_.zero_add, _root_.div_one,
+            --       MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
+            -- first | done | ideal
+            ideal
         ))
 
         evalTactic (← `(tactic|
@@ -2044,7 +2063,7 @@ def evalGBSolve : Tactic := fun stx => do
 
         evalTactic (← `(tactic|
           have eq : ($rm_term : $polyType) = (0 : $polyType) := by
-            exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mpr h_mem
+            exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal h_gb' h_rm).mpr h_mem
         ))
 
         evalTactic (← `(tactic|

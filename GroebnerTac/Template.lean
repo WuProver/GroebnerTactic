@@ -145,7 +145,14 @@ example :
         all_goals
           exact withBotDegree_le_of_repr_le <| by decide +kernel
       }
-  · simp
+  · simp only [support_zero, Finset.notMem_empty, Fin.isValue, List.length_cons, List.length_nil,
+    Nat.reduceAdd, List.get_eq_getElem, ne_eq, Fin.forall_fin_two, Fin.coe_ofNat_eq_mod,
+    Nat.zero_mod, List.getElem_cons_zero, Nat.mod_succ, List.getElem_cons_succ, OfNat.ofNat_ne_zero,
+    not_false_eq_true, pow_eq_zero_iff, X_ne_zero, forall_const, IsEmpty.forall_iff, implies_true]
+  simp only [Fin.isValue, Set.mem_insert_iff, Set.mem_singleton_iff, isUnit_iff_ne_zero, ne_eq,
+    leadingCoeff_eq_zero_iff, forall_eq_or_imp, forall_eq, OfNat.ofNat_ne_zero, not_false_eq_true,
+    pow_eq_zero_iff, X_ne_zero, and_true]
+  decide +kernel
 
 
 /- The template of `G` is the groebner basis of `Ideal.span F` -/
@@ -218,13 +225,12 @@ example :
     have h_ideal : Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
       Ideal.span ({0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set (MvPolynomial (Fin 2) ℚ)) := by
       simp
-      ideal
     have h_gb' : letI basis := ({0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set <| MvPolynomial (Fin 2) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}
     : Set (MvPolynomial (Fin 2) ℚ)) ) := by
       rw [h_ideal]
       exact h_gb
-    exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mp rfl
+    exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal h_gb' h_rm).mp rfl
 
 
 example:
@@ -236,7 +242,6 @@ example:
     have l_ideal : Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
     Ideal.span ( {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
       simp
-      ideal
     have h_gb' : letI basis := ( {0 + C ↑(↑1 / ↑1) * X 0 ^ 1, 0 + C ↑(↑1 / ↑1) * X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
       lex.IsGroebnerBasis basis (Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} :
       Set (MvPolynomial (Fin 3) ℚ)) ) := by
@@ -248,7 +253,7 @@ example:
       remainder
     by_contra h_mem
     have eq : X 2 = (0 : MvPolynomial (Fin 3) ℚ ):= by
-      exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h_gb' h_rm).mpr h_mem
+      exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal h_gb' h_rm).mpr h_mem
     have neq : X 2 ≠ (0 : MvPolynomial (Fin 3) ℚ) := by
       decide +kernel
     contradiction
@@ -314,7 +319,8 @@ example :
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
     basis
   have h₆ : (1: MvPolynomial (Fin 3) ℚ) = 0 := by
-    exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h₅ h₄).mpr h₃
+    exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal h₅ h₄).mpr h₃
+    -- exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h₅ h₄).mpr h₃
   simp at h₆
 
 end
