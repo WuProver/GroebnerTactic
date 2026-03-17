@@ -1196,7 +1196,7 @@ elab "base" : tactic  => do
           simp
           basis
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
-          simp
+          -- simp
           ideal
         simp only [h_ideal] at h_gb
         exact h_gb
@@ -1246,21 +1246,25 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
     let ty ← Term.withSynthesize <| Term.elabTerm stx none
     let ty ← instantiateMVars ty
 
+    let tacStx ← `(tactic| base)
 
-    let proofSyntax ← `(by base)
-    let proof ← Term.elabTerm proofSyntax (some ty)
+    let proofMVar ← mkFreshExprSyntheticOpaqueMVar ty
+
+    let unsolvedGoals ← Lean.Elab.Tactic.run proofMVar.mvarId! do
+      Lean.Elab.Tactic.evalTactic tacStx
+
+    unless unsolvedGoals.isEmpty do
+      throwError m!"The tactic 'base' failed to prove the hypothesis, leaving unsolved goals."
+
+    let proof ← instantiateMVars proofMVar
 
     let hypName := name.map (·.getId) |>.getD `this
 
     liftMetaTactic fun mvarId => do
       mvarId.withContext do
-
         let mvarIdNew ← mvarId.assert hypName ty proof
-
         let (_fvarId, mvarIdNew) ← mvarIdNew.intro1P
-
         return [mvarIdNew]
-
 
 
 syntax (name := groebnerMembership) "ideal_membership" : tactic
@@ -1638,8 +1642,6 @@ def evalradicalMembership : Tactic := fun _stx => do
       let σ_new : Q(Type) := q(Fin ($n + 1))
 
       let n_term : Term ← Lean.PrettyPrinter.delab n
-      -- let f_term ← Lean.PrettyPrinter.delab f
-      -- let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial (Fin ($n + 1)) $R)
 
       let _inst_R ← synthInstanceQ q(CommRing (MvPolynomial (Fin ($n + 1)) $R))
 
@@ -1803,15 +1805,7 @@ def evalGBSolve : Tactic := fun stx => do
         have h_gb :
         lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
           basis
-          -- sorry
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
-          -- simp only [_root_.ne_eq, _root_.one_ne_zero,
-          --         _root_.not_false_eq_true,
-          --         _root_.div_self, MvPolynomial.C_1,
-          --         Fin.isValue, _root_.pow_one, _root_.one_mul,
-          --         _root_.zero_add, _root_.div_one,
-          --         MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
-          -- first | done | ideal
           ideal
         simp only [h_ideal] at h_gb
         exact h_gb
@@ -2024,13 +2018,6 @@ def evalGBSolve : Tactic := fun stx => do
 
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
-            -- simp only [_root_.ne_eq, _root_.one_ne_zero,
-            --       _root_.not_false_eq_true,
-            --       _root_.div_self, MvPolynomial.C_1,
-            --       Fin.isValue, _root_.pow_one, _root_.one_mul,
-            --       _root_.zero_add, _root_.div_one,
-            --       MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
-            -- first | done | ideal
             ideal
         ))
 
