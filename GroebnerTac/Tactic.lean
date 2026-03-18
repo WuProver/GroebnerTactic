@@ -147,7 +147,7 @@ open Qq in
 
 
 /-
-We define the function to run Sage scripts
+We define a function to run Sage scripts in this section.
 -/
 inductive SageTask where
   | remainder (poly remainder : String)
@@ -158,7 +158,9 @@ inductive SageTask where
   | radical (poly set : String)
   | Idealmem (poly set : String)
 
-
+/-
+The `SageTask` inductive type represents the different types of tasks we want to perform with Sage.
+-/
 def runSage (task : SageTask) : IO String := do
   let (scriptName, scriptArgs) := match task with
     | .remainder poly rem  => ("Remainder.sage", #["-p", poly, "-d", rem])
@@ -197,6 +199,60 @@ def runSage (task : SageTask) : IO String := do
 
   return stdout
 
+/-
+We define a function to run Sympy code
+-/
+inductive SympyTask where
+  | remainder (poly remainder : String)
+  | basis (set : String)
+  | ideal (genI genJ : String)
+  | GBasis (set : String)
+  | GRemainder (poly set : String)
+  | radical (poly set : String)
+  | Idealmem (poly set : String)
+
+def runSympy (task : SympyTask) : IO String := do
+  let (scriptName, scriptArgs) := match task with
+    | .remainder poly rem  => ("Remainder.py", #["-p", poly, "-d", rem])
+    | .basis set           => ("Basis.py",     #["-s", set])
+    | .ideal genI genJ     => ("Ideal.py",     #["-I", genI, "-J", genJ])
+    | .GBasis set          => ("GBasis.py",    #["-s", set])
+    | .GRemainder poly set => ("GRemainder.py", #["-p", poly, "-s", set])
+    | .radical poly set    => ("Radical.py",  #["-p", poly, "-s", set])
+    | .Idealmem poly set   => ("Idealmem.py", #["-p", poly, "-s", set])
+
+  let cwd ← IO.currentDir
+  let path := cwd / "Sympy" / scriptName
+
+  -- check if the file exists
+  if not (← path.pathExists) then
+    dbg_trace f!"There does not exist {path}"
+    throw <| IO.userError s!"could not find sage script {scriptName}"
+
+  -- runsage
+  let child ← IO.Process.spawn {
+    cmd := "python3"
+    args := #[path.toString] ++ scriptArgs
+    stdout := .piped,
+    stderr := .piped
+  }
+
+  let stdout ← child.stdout.readToEnd
+  let stderr ← child.stderr.readToEnd
+  let exitCode ← child.wait
+
+  if !stderr.isEmpty then
+    IO.println s!"Sage stderr: {stderr}"
+
+  if exitCode != 0 then
+    IO.println s!"Sage exit code: {exitCode}"
+
+  return stdout
+
+
+/-
+We define a function to run Sage code using the API
+-/
 def runSageCode (code : String) : IO String.Slice := do
   let out ← IO.Process.output {
     cmd := "./.venv/bin/python",
