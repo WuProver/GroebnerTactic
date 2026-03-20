@@ -17,6 +17,25 @@ set_option linter.unusedTactic false in
 set_option synthInstance.maxSize 100000000
 variable {σ : Type*} (m : MonomialOrder σ)
 
+/-You can change the mode of the tactic. `0` means using local sagemath. `1` means using sagemath
+  via API. `2` means using Sympy. The default is `0`-/
+example :
+    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
+      {X 0, X 1, X 2, X 3} 0 := by
+  gb_solve
+
+set_option gb_tactic.backend 1 in
+example :
+    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
+      {X 0, X 1, X 2, X 3} 0 := by
+  gb_solve
+
+set_option gb_tactic.backend 2 in
+example :
+    lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
+      {X 0, X 1, X 2, X 3} 0 := by
+  gb_solve
+
 /-The test example that verify mvpolynomial `f` is a remainder with respect to a set `G`-/
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 3 + X 2 ^ 4 + X 3 ^ 5: MvPolynomial (Fin 4) ℚ)
