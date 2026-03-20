@@ -1,24 +1,20 @@
-# GroebnerTac
-This repository contains Lean 4 tactics focused on the automated formal verification of Groebner Basis properties and computations.
+#  Gröbner Tactics
+
+This repository contains Lean 4 tactics for the automated formal verification of Gröbner basis properties and computations.
 
 Our main goal is to create powerful tactics that can automatically prove theorems related to Groebner Basis or the application of Groebner Basis within the Lean 4 theorem prover.
 
-This repository provides Lean 4 tactics for the automated formal verification of properties and computations involving Gröbner bases.
-
-
-Our primary objective is to develop robust tactics capable of automatically proving theorems about Gröbner bases, as well as results that rely on Gröbner basis techniques, within the Lean 4 theorem prover.
-
 The foundational definitions and core theorems on which this work is built are developed in the companion project  [groebner_proj](https://github.com/WuProver/groebner_proj).  One of the main technical challenges in Lean is that the standard `MvPolynomial` type  is, in general, non-computable from the perspective of proof automation.  To overcome this limitation, we introduce a dedicated implementation of [computable polynomials](https://github.com/WuProver/MonomialOrderedPolynomial)  that is suitable for execution and computation within Lean's kernel.
 
-Both the library and its accompanying documentation are works in progress.
+Both the library and its accompanying documentation are  still under development.
 
 
 ## Introduction
 ### Workflow
-1. Lean to Externel Solver: We extract mathematical objects (such as  MvPolynomial and generators of Ideals) from the Lean context and employ meta-programming techniques, specifically [Qq](https://github.com/leanprover-community/quote4) matching, or manual pattern matching, to deconstruct and analyze Lean expressions.
-2. External Computation: Gröbner basis–related computations on multivariate polynomials are delegated to externel solver. The computed results are serialized into a structured JSON format and returned to Lean, where they are reinterpreted for subsequent verification.
+1. Lean to Externel Solvers: We extract mathematical objects (such as  MvPolynomial and generators of Ideals) from the Lean context and employ meta-programming techniques, specifically [Qq](https://github.com/leanprover-community/quote4) matching, or manual pattern matching, to deconstruct and analyze Lean expressions.
+2. External Computation: Gröbner basis–related computations on multivariate polynomials are delegated to externel solvers. The computed results are serialized into a structured JSON format and returned to Lean, where they are reinterpreted for subsequent verifications.
 3. Externel Solver to Lean: Lean parses the incoming JSON data into well-defined  intermediate data structures. These structures are then   systematically translated back into `Expr` and  ultimately elaborated  into `Term` objects in Lean, allowing the externally computed results to be integrated into the proof environment.
-4. Kernel Verification: The verification tasks  are reduced to  polynomial identity testing （PIT) problems that are discharged entirely  within the Lean kernel using the internal [computable polynomial representation](https://github.com/WuProver/MonomialOrderedPolynomial).
+4. Kernel Verification: The verification tasks  are reduced to  polynomial identity testing （PIT) problems which  are discharged entirely  within the Lean kernel using its internal procedures  [computable polynomial representation](https://github.com/WuProver/MonomialOrderedPolynomial).
 
 ### Tactics
 1. `gb_solve`:
