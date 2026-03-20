@@ -1,9 +1,9 @@
-# This a python script that connects to a SageMathCell server, sends code for execution, and retrieves the results. It is designed to be called from Lean, allowing Lean to execute SageMath code and get the results back.
+# This a python script that connects to a SageMathCell server via WebSocket,
+# sends code for execution, and retrieves the results.
 import sys
 import json
 import requests
 import websocket
-import argparse
 from uuid import uuid4
 
 class SageCell(object):
@@ -11,6 +11,7 @@ class SageCell(object):
         if not url.endswith('/'):
             url += '/'
 
+        # 1. Request a kernel
         response = requests.post(
             url + 'kernel',
             data={'accepted_tos': 'true'},
@@ -19,6 +20,7 @@ class SageCell(object):
 
         self.kernel_url = '{ws_url}kernel/{id}/'.format(**response)
 
+        # 2. Connect to the kernel via WebSocket
         websocket.setdefaulttimeout(timeout)
         self._ws = websocket.create_connection(
             self.kernel_url + 'channels',
@@ -86,7 +88,6 @@ def extract_result(messages):
 
         if msg_type == 'stream' and content.get('name') == 'stdout':
             outputs.append(content.get('text', ''))
-
         elif msg_type == 'execute_result':
             outputs.append(content.get('data', {}).get('text/plain', ''))
         elif msg_type == 'error':
@@ -94,27 +95,30 @@ def extract_result(messages):
 
     return "".join(outputs).strip()
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="SageMathCell Runner")
-
-    parser.add_argument('path', type=str, help="The path of the sage file to execute")
-    parser.add_argument('args', type=str, help="The args of the sage file to execute")
-    parser.add_argument('code', type=str, help="The SageMath code to execute")
-
+    # sys.argv[1] is the sage code
+    # sys.argv[2:] are the logical arguments passed to the sage code
     if len(sys.argv) < 2:
-        print("Error: No SageMath code provided.")
+        print("Error: No SageMath code provided.", file=sys.stderr)
         sys.exit(1)
 
-    code_to_run = sys.argv[1]
+    sage_code = sys.argv[1]
+    script_args = sys.argv[2:]
+
+    argv_repr = repr(['sage_script.py'] + script_args)
+    injected_code = f"import sys\nsys.argv = {argv_repr}\n\n" + sage_code
+
     url = 'https://sagecell.sagemath.org'
 
     try:
         cell = SageCell(url)
-        raw_messages = cell.execute_request(code_to_run)
+        raw_messages = cell.execute_request(injected_code)
         cell.close()
 
         result = extract_result(raw_messages)
-        print(result)
+        if result:
+            print(result)
 
     except Exception as e:
         print(f"Error executing request: {e}", file=sys.stderr)

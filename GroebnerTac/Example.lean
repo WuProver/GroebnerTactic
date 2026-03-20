@@ -15,8 +15,6 @@ set_option linter.unreachableTactic false in
 set_option linter.unusedTactic false in
 
 set_option synthInstance.maxSize 100000000
-
-
 variable {σ : Type*} (m : MonomialOrder σ)
 
 /-The test example that verify mvpolynomial `f` is a remainder with respect to a set `G`-/

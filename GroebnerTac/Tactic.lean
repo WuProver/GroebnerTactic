@@ -3,6 +3,7 @@ import Mathlib
 import MonomialOrderedPolynomial
 import Groebner.Groebner
 import Groebner.ToMathlib.List
+import GroebnerTac.GbOption
 
 import Lean.Meta.Tactic.Grind.Arith.CommRing.Poly
 import Lean.Meta.Tactic.TryThis
@@ -145,11 +146,10 @@ open Qq in
   let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
   Lean.logInfo p
 
-
 /-
-We define a function to run Sage scripts in this section.
+The `GbTask` inductive type represents the different types of tasks we want to perform with Sage.
 -/
-inductive SageTask where
+inductive GbTask where
   | remainder (poly remainder : String)
   | basis (set : String)
   | ideal (genI genJ : String)
@@ -159,9 +159,9 @@ inductive SageTask where
   | Idealmem (poly set : String)
 
 /-
-The `SageTask` inductive type represents the different types of tasks we want to perform with Sage.
+We define a function to run Sage scripts in this section.
 -/
-def runSage (task : SageTask) : IO String := do
+def runSageLocal (task : GbTask) : IO String := do
   let (scriptName, scriptArgs) := match task with
     | .remainder poly rem  => ("Remainder.sage", #["-p", poly, "-d", rem])
     | .basis set           => ("Basis.sage",     #["-s", set])
@@ -202,16 +202,7 @@ def runSage (task : SageTask) : IO String := do
 /-
 We define a function to run Sympy code
 -/
-inductive SympyTask where
-  | remainder (poly remainder : String)
-  | basis (set : String)
-  | ideal (genI genJ : String)
-  | GBasis (set : String)
-  | GRemainder (poly set : String)
-  | radical (poly set : String)
-  | Idealmem (poly set : String)
-
-def runSympy (task : SympyTask) : IO String := do
+def runSympy (task : GbTask) : IO String := do
   let (scriptName, scriptArgs) := match task with
     | .remainder poly rem  => ("Remainder.py", #["-p", poly, "-d", rem])
     | .basis set           => ("Basis.py",     #["-s", set])
@@ -262,17 +253,17 @@ def runSageCode (code : String) : IO String.Slice := do
   if out.exitCode == 0 then
     return out.stdout.trimAscii
   else
-    throw <| IO.userError s!"SageCell 执行失败: {out.stderr}"
+    throw <| IO.userError s!"SageCell exec fails: {out.stderr}"
 
 def runner : IO Unit := do
-  IO.println "正在向 SageMath 提交请求..."
   try
     let result ← runSageCode "factorial(3)"
-    IO.println s!"计算结果:\n{result}"
+    IO.println s!"{result}"
   catch e =>
     IO.println e.toString
 
-def runSage' (task : SageTask) : IO String.Slice := do
+
+def runSageAPI (task : GbTask) : IO String := do
   let (scriptName, scriptArgs) := match task with
     | .remainder poly rem  => ("Remainder.sage", #["-p", poly, "-d", rem])
     | .basis set           => ("Basis.sage",     #["-s", set])
@@ -289,29 +280,66 @@ def runSage' (task : SageTask) : IO String.Slice := do
     throw <| IO.userError s!"could not find sage script {scriptName}"
 
   let code ← IO.FS.readFile path
-  -- IO.println s!"Running Sage script {scriptName} with code:\n{code}"
-  IO.println s!"xxxxxx{scriptArgs}"
+
   let out ← IO.Process.output {
     cmd := "./.venv/bin/python",
-    args := #["-c", code] ++ scriptArgs
+    args := #["Runner/sage_runner.py", code] ++ scriptArgs
   }
 
   if out.exitCode == 0 then
     if !out.stderr.isEmpty then
-      IO.println s!"Sage Warning: {out.stderr}"
-    return out.stdout.trimAscii
+      IO.println s!"Sage API Warning: {out.stderr}"
+    return out.stdout.trimAscii.toString
   else
-    throw <| IO.userError s!"Sage Script {scriptName} Exact fail ({out.exitCode}): {out.stderr}"
+    throw <| IO.userError s!"Sage API Script {scriptName} failed ({out.exitCode}): {out.stderr}"
 
 def testRemainder : IO String :=
-  runSage (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
+  runSageLocal (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
 
 def testRemainder' : IO String.Slice :=
-  runSage' (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
+  runSageAPI (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
 
 #eval testRemainder
 
--- #eval testRemainder'
+#eval testRemainder'
+
+/--
+This is the main function you should call from your tactic.
+It checks the `gb_tactic.backend` option and routes to the correct execution engine.
+-/
+def runBackendTask (task : GbTask) : MetaM String := do
+  let opts ← getOptions
+  let backend := gb_tactic.backend.get opts
+
+  match backend with
+  | .sage_api   => liftM (runSageAPI task)
+  | .sage_local => liftM (runSageLocal task)
+  | .sympy      => liftM (runSympy task)
+
+
+def testRemainderSageLocal : IO String :=
+  runSageLocal (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
+
+def testRemainderSympy : IO String :=
+  runSympy (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
+
+def testBackendTask: MetaM String :=
+  runBackendTask (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
+
+#eval testRemainderSageLocal
+
+#eval testRemainderSympy
+
+#eval testBackendTask
+
+set_option gb_tactic.backend 0
+#eval testBackendTask
+
+-- set_option gb_tactic.backend 1
+-- #eval testBackendTask
+
+set_option gb_tactic.backend 2
+#eval testBackendTask
 
 
 /-
@@ -727,7 +755,7 @@ def evalRemainderTry : Tactic := fun stx => do
       let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
       let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
 
-      let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
+      let sage_result ← runBackendTask (.remainder parsedPoly s!"{varsList}")
       let result := Json.parse s!"{sage_result}"
       let sage_json_result ← parseJson result
       let Except.ok arr := sage_json_result.getArr? | failure
@@ -793,7 +821,7 @@ def evalRemainderTactic : Tactic := fun stx => do
           let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
 
           let varsStr := s!"{varsList}"
-          let sage_result ← runSage (.remainder parsedPoly varsStr)
+          let sage_result ← runBackendTask (.remainder parsedPoly varsStr)
 
           let result := Json.parse sage_result
           let sage_json_result ← parseJson result
@@ -837,7 +865,7 @@ elab "remainder_zero" : tactic => do
       let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
       let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
 
-      let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
+      let sage_result ← runBackendTask (.remainder parsedPoly s!"{varsList}")
 
       let result := Json.parse s!"{sage_result}"
 
@@ -902,7 +930,7 @@ elab "remainder_neq_zero" : tactic => do
       let parsedPoly ← parsePoly (σ := σ) (R := R) (r := instCommSemiring) poly
       let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
 
-      let sage_result ← runSage (.remainder parsedPoly s!"{varsList}")
+      let sage_result ← runBackendTask (.remainder parsedPoly s!"{varsList}")
 
       let result := Json.parse s!"{sage_result}"
       let sage_json_result ← parseJson result
@@ -983,7 +1011,7 @@ elab "basis" : tactic  => do
 
       let basislist <- parseSet basis
 
-      let sage_result ← runSage (.basis s!"{basislist}")
+      let sage_result ← runBackendTask (.basis s!"{basislist}")
       let result := Json.parse s!"{sage_result}"
       let sage_json_result ← parseJson result
 
@@ -1160,7 +1188,7 @@ elab "ideal" : tactic => do
         let I_gens_list ←  parseSet I_gens
         let J_gens_list ←  parseSet J_gens
 
-        let sage_result ← runSage (.ideal s!"{I_gens_list}" s!"{J_gens_list}")
+        let sage_result ← runBackendTask (.ideal s!"{I_gens_list}" s!"{J_gens_list}")
         let result := Json.parse s!"{sage_result}"
         let sage_json_result ← parseJson result
         let Except.ok poly_arr := sage_json_result.getArr? | failure
@@ -1286,7 +1314,7 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
 
     let polys ← parseSet' (σ := σ) (R := R) (r := inst) G_expr
 
-    let sage_gb ← runSage (.GBasis s!"{polys}")
+    let sage_gb ← runBackendTask (.GBasis s!"{polys}")
 
     let gb := Json.parse s!"{sage_gb}"
     let gb ← parseJson gb
@@ -1341,7 +1369,7 @@ def evalGroebnerMembership : Tactic := fun _stx => do
         let I_gens_list ←  parseSet I_gens
         let f_str ← parsePoly f
 
-        let sage_coeff ← runSage (.Idealmem f_str s!"{I_gens_list}")
+        let sage_coeff ← runBackendTask (.Idealmem f_str s!"{I_gens_list}")
 
         let coeff_list := Json.parse s!"{sage_coeff}"
         let coeff_list ← parseJson coeff_list
@@ -1372,7 +1400,7 @@ def evalGroebnerMembership : Tactic := fun _stx => do
 
         let I_gens_list ←  parseSet I_gens
 
-        let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
+        let sage_gb ← runBackendTask (.GBasis s!"{I_gens_list}")
         let gb := Json.parse s!"{sage_gb}"
         let gb ← parseJson gb
         let Except.ok gb_arr := gb.getArr? | failure
@@ -1381,7 +1409,7 @@ def evalGroebnerMembership : Tactic := fun _stx => do
 
         let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
 
-        let sage_rm ← runSage (.GRemainder f_str s!"{I_gens_list}")
+        let sage_rm ← runBackendTask (.GRemainder f_str s!"{I_gens_list}")
 
         let Except.ok parsed := Lean.Json.parse sage_rm | failure
         let Except.ok p := Lean.fromJson? (α := Poly.Polynomial) parsed | failure
@@ -1664,7 +1692,7 @@ def evalradicalMembership : Tactic := fun _stx => do
       let f_str ←  parsePoly f
       let I_gens_list ←  parseSet I_gens
 
-      let n ← runSage (.radical f_str s!"{I_gens_list}")
+      let n ← runBackendTask (.radical f_str s!"{I_gens_list}")
 
       let n_val : Nat := n.trimAscii.toNat!
       let n_expr := mkNatLit n_val
@@ -1821,7 +1849,7 @@ def evalGBSolve : Tactic := fun stx => do
           let varsList ← parseSet (σ := σ) (R := R) (r := instCommSemiring) vars
 
           let varsStr := s!"{varsList}"
-          let sage_result ← runSage (.remainder parsedPoly varsStr)
+          let sage_result ← runBackendTask (.remainder parsedPoly varsStr)
 
           let result := Json.parse sage_result
           let sage_json_result ← parseJson result
@@ -1875,7 +1903,7 @@ def evalGBSolve : Tactic := fun stx => do
       let f_str ←  parsePoly f
       let I_gens_list ←  parseSet I_gens
 
-      let n ← runSage (.radical f_str s!"{I_gens_list}")
+      let n ← runBackendTask (.radical f_str s!"{I_gens_list}")
 
       let n_val : Nat := n.trimAscii.toNat!
       let n_expr := mkNatLit n_val
@@ -2001,7 +2029,7 @@ def evalGBSolve : Tactic := fun stx => do
         let I_gens_list ←  parseSet I_gens
         let f_str ← parsePoly f
 
-        let sage_coeff ← runSage (.Idealmem f_str s!"{I_gens_list}")
+        let sage_coeff ← runBackendTask (.Idealmem f_str s!"{I_gens_list}")
 
         let coeff_list := Json.parse s!"{sage_coeff}"
         let coeff_list ← parseJson coeff_list
@@ -2032,7 +2060,7 @@ def evalGBSolve : Tactic := fun stx => do
 
         let I_gens_list ←  parseSet I_gens
 
-        let sage_gb ← runSage (.GBasis s!"{I_gens_list}")
+        let sage_gb ← runBackendTask (.GBasis s!"{I_gens_list}")
         let gb := Json.parse s!"{sage_gb}"
         let gb ← parseJson gb
         let Except.ok gb_arr := gb.getArr? | failure
@@ -2041,7 +2069,7 @@ def evalGBSolve : Tactic := fun stx => do
 
         let argsTerms : Array Term ← exprArray.mapM fun e => Lean.PrettyPrinter.delab e
 
-        let sage_rm ← runSage (.GRemainder f_str s!"{I_gens_list}")
+        let sage_rm ← runBackendTask (.GRemainder f_str s!"{I_gens_list}")
 
         let Except.ok parsed := Lean.Json.parse sage_rm | failure
         let Except.ok p := Lean.fromJson? (α := Poly.Polynomial) parsed | failure
@@ -2109,8 +2137,6 @@ def evalGBSolve : Tactic := fun stx => do
           contradiction
         ))
       | _ => throwError "Expect Ideal.span, but got {I}"
-
-
     | _ => throwError "The Goal can not match any parttern."
 
 end IsRemainder
