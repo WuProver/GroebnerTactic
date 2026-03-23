@@ -1170,7 +1170,7 @@ elab "submodule_span" "[" coeffs:term,* "]" : tactic => do
 
   replaceMainGoal [mvarIdEq.mvarId!]
 
-elab "ideal" : tactic => do
+elab "idealeq" : tactic => do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let goalType ← goal.getType
   let goalType ← checkTypeQ goalType q(Prop)
@@ -1281,7 +1281,7 @@ elab "base" : tactic  => do
           basis
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
           -- simp
-          ideal
+          idealeq
         simp only [h_ideal] at h_gb
         exact h_gb
       }))
@@ -1444,7 +1444,7 @@ def evalGroebnerMembership : Tactic := fun _stx => do
                   Fin.isValue, _root_.pow_one, _root_.one_mul,
                   _root_.zero_add, _root_.div_one,
                   MvPolynomial.C_neg, ← _root_.sub_eq_add_neg]
-            first | done | ideal
+            first | done | idealeq
         ))
 
         evalTactic (← `(tactic|
@@ -1886,7 +1886,7 @@ def evalGBSolve : Tactic := fun stx => do
         lex.IsGroebnerBasis ($basis_term : Set $polyType) (Ideal.span ($basis_term)) := by
           basis
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
-          ideal
+          idealeq
         simp only [h_ideal] at h_gb
         exact h_gb
       }))
@@ -2098,7 +2098,7 @@ def evalGBSolve : Tactic := fun stx => do
 
         evalTactic (← `(tactic|
           have h_ideal : $I_term = Ideal.span ($setSyntax : Set $polyType) := by
-            ideal
+            idealeq
         ))
 
         evalTactic (← `(tactic|
