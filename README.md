@@ -55,6 +55,53 @@ example :
 ```
 ## Some Example
 
+```lean
+-- Certifies that the remainder of a polynomial $f$ upon reduction  modulo a set $B$ is $r$
+example :
+    lex.IsRemainder (X 0 * X 1 : MvPolynomial (Fin 3) ℚ)
+      {2 * X 0 - X 1}
+      (C (1/2 : ℚ) * X 1 ^ 2) := by
+  gb_solve
+```
+
+```lean
+-- Verifies that a set $B$ is a groebner basis of an ideal $I$
+example :
+  lex.IsGroebnerBasis
+  ({1} : Set <| MvPolynomial (Fin 3) ℚ)
+  (Ideal.span ({X 0, 1 - X 0} : Set <| MvPolynomial (Fin 3) ℚ)) := by
+  gb_solve
+```
+
+```lean
+-- Decides whether a polynomial $f$ belongs to an ideal $I$
+example :
+  X 0 ∈ Ideal.span ({X 0, X 1} : Set (MvPolynomial (Fin 2) ℚ)) := by
+  gb_solve
+```
+
+```lean
+-- Decides whether a polynomial $f$ belongs to an ideal $I$
+example :
+   X 2 ∉ Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
+  gb_solve
+```
+
+
+```lean
+-- Decides whether a polynomial $f$ belongs to the radical ideal  $\sqrt{I}$
+example :
+  X 0 * X 1 ∈ (Ideal.span ({C (1/2 : ℚ) * (X 0 + X 1), C (1/2 : ℚ) * (X 0 - X 1)} :
+   Set (MvPolynomial (Fin 2) ℚ))).radical := by
+  gb_solve
+```
+
+```lean
+-- Decides whether a polynomial $f$ belongs to the radical ideal  $\sqrt{I}$
+example :
+  X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
+  gb_solve
+```
 
 ## Build
 If you don't already have Lean 4 set up, please follow the official [Lean 4 installation instructions](https://leanprover-community.github.io/get_started.html).
@@ -69,15 +116,37 @@ lake build
 
 If you want to use Sagemath as an external calculation tool, please follow the official [SageMath installation instructions](https://doc.sagemath.org/html/en/installation/index.html).
 
-If you find that SageMath takes up too much storage space, or that installing SageMath on Windows is too cumbersome, you can opt to use SymPy as an external computation tool
+If you find that SageMath takes up too much storage space, or that installing SageMath on Windows is too cumbersome, you can opt to use SymPy as an external computation tool.
+
+For Linux/MacOS systems, please run the following command:
 ```bash
 python -m venv newenv
-source newenv/bin/activate      # Linux/Mac
-# newenv\Scripts\activate       # Windows
+source newenv/bin/activate
 pip install -r requirements.txt
 ```
 
-##
+For Windows CMD, please run the following command:
+```bash
+python -m venv newenv
+newenv\Scripts\activate.bat
+pip install -r requirements.txt
+```
+
+For Windows Powershell, please run the following command:
+```bash
+python -m venv newenv
+.\newenv\Scripts\Activate.ps1
+pip install -r requirements.txt
+```
+
+## Installation
+To use our tactics in your Lean 4 project, you need to add this repository as a dependency. Adding he following block to your project's `lakefile.toml`:
+```
+[[require]]
+name = "GroebnerTactic"
+git = "https://github.com/WuProver/GroebnerTactic.git"
+scope  = "WuProver"
+```
 
 ## WIP
 1. clean up code;
