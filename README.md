@@ -139,15 +139,6 @@ python -m venv newenv
 pip install -r requirements.txt
 ```
 
-## Installation
-To use our tactics in your Lean 4 project, you need to add this repository as a dependency. Adding he following block to your project's `lakefile.toml`:
-```
-[[require]]
-name = "GroebnerTactic"
-git = "https://github.com/WuProver/GroebnerTactic.git"
-scope  = "WuProver"
-```
-
 ## WIP
 1. clean up code;
 2. solve problems related to the automatic determination of ideal intersection;
