@@ -56,7 +56,7 @@ example :
 ## Some Example
 ### `gb_solve`
 Given a polynomial $f$ and a divisor set $G$, the `gb_solve` tactic automatically certifies the remainder of $f$ reduced modulo $G$.
-In this example, it proves that reducing $f = x_0 x_1$ modulo the set \{$2x_0 - x_1$\} yields the remainder $r = \frac{1}{2} x_1^2$.
+In this example, it proves that reducing $f = x_0 x_1$ modulo the set $\{2x_0 - x_1\}$ yields the remainder $r = \frac{1}{2} x_1^2$.
 ```lean
 -- Certifies that the remainder of a polynomial $f$ upon reduction  modulo a set $B$ is $r$
 example :
