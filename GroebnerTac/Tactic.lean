@@ -146,6 +146,14 @@ open Qq in
   let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
   Lean.logInfo p
 
+def getDir : IO System.FilePath := do
+  let envPath ← IO.getEnv "GROEBNER_TACTIC_PATH"
+  match envPath with
+  | some dir =>
+      return (dir : System.FilePath)
+  | none =>
+      IO.currentDir
+
 /-
 The `GbTask` inductive type represents the different types of tasks we want to perform with Sage.
 -/
@@ -171,7 +179,7 @@ def runSageLocal (task : GbTask) : IO String := do
     | .radical poly set    => ("Radical.sage",  #["-p", poly, "-s", set])
     | .Idealmem poly set   => ("Idealmem.sage", #["-p", poly, "-s", set])
 
-  let cwd ← IO.currentDir
+  let cwd ← getDir
   let path := cwd / "Sage" / scriptName
 
   -- check if the file exists
@@ -212,7 +220,7 @@ def runSympy (task : GbTask) : IO String := do
     | .radical poly set    => ("Radical.py",  #["-p", poly, "-s", set])
     | .Idealmem poly set   => ("Idealmem.py", #["-p", poly, "-s", set])
 
-  let cwd ← IO.currentDir
+  let cwd ← getDir
   let path := cwd / "Sympy" / scriptName
 
   -- check if the file exists
