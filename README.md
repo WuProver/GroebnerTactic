@@ -138,6 +138,21 @@ python -m venv newenv
 .\newenv\Scripts\Activate.ps1
 pip install -r requirements.txt
 ```
+## Installation
+To use our tactics in your Lean 4 project, you need to add this repository as a dependency. Adding he following block to your project's `lakefile.toml`:
+```
+[[require]]
+name = "GroebnerTactic"
+git = "https://github.com/WuProver/GroebnerTactic.git"
+scope  = "WuProver"
+```
+To use the full features, please download Sage as instructed above. Since installing Sage on Windows can be quite cumbersome, you can install Python instead and run the following commands.
+```bash
+python -m venv newenv
+source newenv/bin/activate
+pip install -r .lake/packages/GroebnerTactic/requirements.txt
+```
+If you prefer not to install anything, you can use the API mode, but please use it sparingly.
 
 ## WIP
 1. clean up code;
