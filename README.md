@@ -54,6 +54,7 @@ example :
   gb_solve
 ```
 ## Some Example
+### `gb_solve`
 Given a polynomial $f$ and a divisor set $G$, the `gb_solve` tactic automatically certifies the remainder of $f$ reduced modulo $G$.
 In this example, it proves that reducing $f = x_0 x_1$ modulo the set $\{2x_0 - x_1\}$ yields the remainder $r = \frac{1}{2} x_1^2$.
 ```lean
@@ -103,6 +104,24 @@ Conversely, it correctly determines that $x_0$ is not in the radical of the idea
 example :
   X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   gb_solve
+```
+### `idealeq`
+
+```lean
+example :
+  Ideal.span ({X 0 + X 1^2, X 1 }) =
+    Ideal.span ({X 0, X 1 } : Set (MvPolynomial (Fin 3) ℚ)) := by
+   idealeq
+```
+### `add_gb_hyp`
+
+```lean
+example : lex.IsGroebnerBasis ({X 0, X 1} :
+ Set (MvPolynomial (Fin 3) ℚ)) (Ideal.span {X 0, X 0 + X 1}) := by
+  add_gb_hyp h ({X 0, X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))
+  simp only [ne_eq, one_ne_zero, not_false_eq_true, div_self, C_1, Fin.isValue, pow_one, one_mul,
+    zero_add] at h
+  exact h
 ```
 
 ## Build
