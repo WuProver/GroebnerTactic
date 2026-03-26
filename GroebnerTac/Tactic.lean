@@ -153,7 +153,6 @@ open Qq in
 --       return (dir : System.FilePath)
 --   | none =>
 --       IO.currentDir
--- 获取 Sage 脚本的通用目录
 
 def getDir : IO System.FilePath := do
   let cwd ← IO.currentDir
@@ -239,7 +238,7 @@ def runSympy (task : GbTask) : IO String := do
   -- check if the file exists
   if not (← path.pathExists) then
     dbg_trace f!"There does not exist {path}"
-    throw <| IO.userError s!"could not find sage script {scriptName}"
+    throw <| IO.userError s!"There does not exist {path}"
 
   -- runsage
   let child ← IO.Process.spawn {
@@ -298,7 +297,7 @@ def runSageAPI (task : GbTask) : IO String := do
   let path := cwd / "Sage" / scriptName
 
   if not (← path.pathExists) then
-    throw <| IO.userError s!"could not find sage script {scriptName}"
+    throw <| IO.userError s!"There does not exist {path}}"
 
   let code ← IO.FS.readFile path
 
@@ -320,9 +319,9 @@ def testRemainder : IO String :=
 def testRemainder' : IO String.Slice :=
   runSageAPI (.remainder "X_0*X_1" "[X_0^2-X_1, 3*X_1]")
 
-#eval testRemainder
+-- #eval testRemainder
 
-#eval testRemainder'
+-- #eval testRemainder'
 
 /--
 This is the main function you should call from your tactic.
