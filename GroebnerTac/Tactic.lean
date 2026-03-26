@@ -198,7 +198,7 @@ def runSageLocal (task : GbTask) : IO String := do
   -- check if the file exists
   if not (← path.pathExists) then
     dbg_trace f!"There does not exist {path}"
-    throw <| IO.userError s!"could not find sage script {scriptName}"
+    throw <| IO.userError s!"There does not exist {path}"
 
   -- runsage
   let child ← IO.Process.spawn {
