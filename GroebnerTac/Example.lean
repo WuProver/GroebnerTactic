@@ -246,32 +246,32 @@ example :
 example :
   Ideal.span ({X 0 + X 1^2, X 1 }) =
     Ideal.span ({X 0, X 1 } : Set (MvPolynomial (Fin 3) ℚ)) := by
-   ideal
+   idealeq
 
 example :
   Ideal.span ({X 0 + X 1^ 2, X 1 ^ 2}) =
     Ideal.span ({X 0, X 1 ^ 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
-    ideal
+    idealeq
 
 example :
   Ideal.span ({2 * X 0 - 1} : Set (MvPolynomial (Fin 3) ℚ)) =
   Ideal.span ({X 0 - C (1/2 : ℚ)}) := by
-  ideal
+  idealeq
 
 example :
   Ideal.span ({C (1/3 : ℚ) * X 0 + C (2/3 : ℚ)} : Set (MvPolynomial (Fin 3) ℚ)) =
   Ideal.span ({X 0 + 2}) := by
-  ideal
+  idealeq
 
 example :
   Ideal.span ({X 0 ^ 2 - C (1/4 : ℚ), X 0 - C (1/2 : ℚ)} : Set (MvPolynomial (Fin 3) ℚ)) =
   Ideal.span ({X 0 - C (1/2 : ℚ)}) := by
-  ideal
+  idealeq
 
 example :
   Ideal.span ({C (1/2 : ℚ) * X 0 + C (1/2 : ℚ), C (1/2 : ℚ) * X 0 - C (1/2 : ℚ)} : Set (MvPolynomial (Fin 3) ℚ)) =
   Ideal.span ({1}) := by
-  ideal
+  idealeq
 
 example :
   Ideal.span ({
@@ -284,6 +284,6 @@ example :
     X 0 ^ 2 + X 1 ^ 2 + X 2 ^ 2,
     X 0 * X 1 * X 2 - 1
   } : Set (MvPolynomial (Fin 3) ℚ)) := by
-  ideal
+  idealeq
 
 end

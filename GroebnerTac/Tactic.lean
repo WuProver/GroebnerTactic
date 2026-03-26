@@ -146,13 +146,26 @@ open Qq in
   let p := p.mkQ q(Nat) instOfNat q(ℚ) instField
   Lean.logInfo p
 
+-- def getDir : IO System.FilePath := do
+--   let envPath ← IO.getEnv "GROEBNER_TACTIC_PATH"
+--   match envPath with
+--   | some dir =>
+--       return (dir : System.FilePath)
+--   | none =>
+--       IO.currentDir
+-- 获取 Sage 脚本的通用目录
+
 def getDir : IO System.FilePath := do
-  let envPath ← IO.getEnv "GROEBNER_TACTIC_PATH"
-  match envPath with
-  | some dir =>
-      return (dir : System.FilePath)
-  | none =>
-      IO.currentDir
+  let cwd ← IO.currentDir
+  let depPath := cwd / ".lake" / "packages" / "GroebnerTactic"
+  let localPath := cwd
+  if ← depPath.isDir then
+    return depPath
+  else if ← localPath.isDir then
+    return localPath
+  else
+    throw <| IO.userError s!"Following path don't exist target code :\n1. {depPath}\n2. {localPath}"
+
 
 /-
 The `GbTask` inductive type represents the different types of tasks we want to perform with Sage.
