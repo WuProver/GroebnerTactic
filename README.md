@@ -92,7 +92,7 @@ example :
 
 Beyond standard ideals, the tactic can determine if a polynomial $f$ lies within the radical of an ideal, denoted as $\sqrt{I}$. It automatically handles the underlying algebraic transformations to prove both membership and non-membership.
 ```lean
--- Decides whether a polynomial $f$ belongs to the radical ideal  $\sqrt{I}$
+-- Decides a polynomial $f$ belongs to the radical ideal  $\sqrt{I}$
 example :
   X 0 * X 1 ∈ (Ideal.span ({C (1/2 : ℚ) * (X 0 + X 1), C (1/2 : ℚ) * (X 0 - X 1)} :
    Set (MvPolynomial (Fin 2) ℚ))).radical := by
@@ -100,7 +100,7 @@ example :
 ```
 
 ```lean
--- Decides whether a polynomial $f$ belongs to the radical ideal  $\sqrt{I}$
+-- Decides a polynomial $f$ doesn't belong to the radical ideal  $\sqrt{I}$
 example :
   X 0 ∉ (Ideal.span ({X 0 + X 1} : Set (MvPolynomial (Fin 3) ℚ))).radical := by
   gb_solve
