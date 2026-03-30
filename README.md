@@ -135,6 +135,7 @@ Once Lean is installed, you can clone this repository and build the project:
 
 ```bash
 git clone https://github.com/WuProver/GroebnerTactic.git
+cd GroebnerTactic
 lake exe cache get
 lake build
 ```
