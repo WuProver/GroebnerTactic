@@ -194,7 +194,8 @@ example :
     intro x hx
     simp_rw [Set.mem_insert_iff, Set.mem_singleton_iff] at hx
     rcases hx with (rfl|rfl)
-    · change _ ∈ (_ : Ideal _)
+    ·
+      change _ ∈ (_ : Ideal _)
       submodule_span [1, 1]
       decide +kernel
     · change _ ∈ (_ : Ideal _)

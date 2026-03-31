@@ -166,7 +166,7 @@ example : 1 ∉ Ideal.span  ({X 0 + X 1, 1 - X 0*X 3} : Set <| MvPolynomial (Fin
 example : 1 ∉ Ideal.span  ({X 1*X 3 + 1, X 0 + X 1} : Set <| MvPolynomial (Fin 4) ℚ) := by
   gb_solve
 
-example : 1 ∈ Ideal.span ({X 0, X 1, 1 - X 3 * X 0} : Set <| MvPolynomial (Fin 4) ℚ) := by
+example : 1 ∈ Ideal.span ({X 0, 1 - X 1 * X 0} : Set <| MvPolynomial (Fin 2) ℚ) := by
   gb_solve
 
 example :
@@ -241,6 +241,20 @@ example :
   simp only [ne_eq, one_ne_zero, not_false_eq_true, div_self, C_1, Fin.isValue, pow_one, one_mul,
     zero_add] at h
   exact h
+
+example :
+  lex.IsGroebnerBasis
+  ({X 0 + X 1, X 1 ^ 2 + 1} : Set <| MvPolynomial (Fin 2) ℚ)
+  (Ideal.span ({X 0 + X 1, X 0 * X 1 - 1} : Set <| MvPolynomial (Fin 2) ℚ)) := by
+  gb_solve
+
+example : ∃ G : Set (MvPolynomial (Fin 2) ℚ),
+  lex.IsGroebnerBasis G
+  (Ideal.span ({X 0 + X 1, X 0 * X 1 - 1} : Set <| MvPolynomial (Fin 2) ℚ)) := by
+  add_gb_hyp h ({X 0 + X 1, X 0 * X 1 - 1} : Set (MvPolynomial (Fin 2) ℚ))
+  exact
+    Exists.intro
+      {0 + C (1 / 1) * X 0 ^ 1 + C (1 / 1) * X 1 ^ 1, 0 + C (1 / 1) * X 1 ^ 2 + C (1 / 1)} h
 
 /-Some examples that verify two ideals are equal-/
 example :
