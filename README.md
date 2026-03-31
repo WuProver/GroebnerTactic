@@ -135,6 +135,7 @@ Once Lean is installed, you can clone this repository and build the project:
 
 ```bash
 git clone https://github.com/WuProver/GroebnerTactic.git
+cd GroebnerTactic
 lake exe cache get
 lake build
 ```
@@ -178,7 +179,3 @@ source newenv/bin/activate
 pip install -r .lake/packages/GroebnerTactic/requirements.txt
 ```
 If you prefer not to install anything, you can use the API mode, but please use it sparingly.
-
-## WIP
-1. clean up code;
-2. solve problems related to the automatic determination of ideal intersection;
