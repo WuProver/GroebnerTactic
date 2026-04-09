@@ -171,6 +171,7 @@ To use our tactics in your Lean 4 project, you need to add this repository as a 
 name = "GroebnerTactic"
 git = "https://github.com/WuProver/GroebnerTactic.git"
 scope  = "WuProver"
+rev = "main"
 ```
 To use the full features, please download Sage as instructed above. Since installing Sage on Windows can be quite cumbersome, you can install Python instead and run the following commands.
 ```bash
