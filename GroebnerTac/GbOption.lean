@@ -24,6 +24,6 @@ instance : KVMap.Value GroebnerTacticBackend where
   ofDataValue? := GroebnerTacticBackend.ofDataValue?
 
 register_option gb_tactic.backend : GroebnerTacticBackend := {
-  defValue := .sympy
+  defValue := .sage_local
   descr := "backend used on `gb_tactic`, `0` for Sage API, `1` for Sage, and `2` for sympy"
 }
