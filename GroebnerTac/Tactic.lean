@@ -431,154 +431,78 @@ In this section, we define some functions to parse `Expr` in Lean
 -/
 /-`parsePoly` parses a `MvPolynomial σ R` expression into a `String`-/
 partial def parsePoly {u v: Lean.Level}
-  {σ : Q(Type $u)}{R : Q(Type $v)}
-  {r : Q(CommSemiring $R)} (e : Q(MvPolynomial $σ $R)) : MetaM String := do
+    {σ : Q(Type $u)}{R : Q(Type $v)}
+    {r : Q(CommSemiring $R)} (e : Q(MvPolynomial $σ $R)) : MetaM String := do
   match e with
   | ~q($a + $b) =>
     let a  ← parsePoly a
     let b  ← parsePoly b
     pure s!"({a} + {b})"
 
-  | ~q(@HSub.hSub (MvPolynomial «$σ» «$R»)
-    (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $commring $a $b) => do
-            let a ← parsePoly a
-            let b ← parsePoly b
-            pure s!"({a} - {b})"
+  | ~q(@HSub.hSub (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») _ $commring $a $b) =>
+    let a ← parsePoly a
+    let b ← parsePoly b
+    pure s!"({a} - {b})"
+
+  | ~q(@Sub.sub (MvPolynomial «$σ» «$R») $commring $a $b) =>
+    let a ← parsePoly a
+    let b ← parsePoly b
+    pure s!"({a} - {b})"
+
+  | ~q(@Neg.neg (MvPolynomial «$σ» «$R») $commring $a) =>
+    let aStr ← parsePoly a
+    pure s!"(-{aStr})"
 
   | ~q($a * $b) =>
     let left ← parsePoly a
     let right ← parsePoly b
     pure s!"({left} * {right})"
 
-  | ~q($a ^ ($n : ℕ)) =>
+  | ~q(Mul.mul $a $b) =>
+    let left ← parsePoly a
+    let right ← parsePoly b
+    pure s!"({left} * {right})"
+
+  | ~q(($n : Nat) • $a) =>
+    let .isNat _ n _ ← NormNum.derive (α := q(ℕ)) n | failure
     let baseStr ← parsePoly a
-    let n ← try
-      let .isNat _ n _ ← NormNum.derive (α := q(ℕ)) n | failure
-      pure n.natLit!
-    catch _ =>
-      pure n.natLit!
-    pure s!"{baseStr}^{n}"
+    pure s!"({n.natLit!} * {baseStr})"
+
+  | ~q(($s : «$R») • $a) =>
+    let some s := (← NormNum.derive s).toRat | failure
+    let baseStr ← parsePoly a
+    pure s!"({s} * {baseStr})"
+
+  | ~q(@HSMul.hSMul Int (MvPolynomial «$σ» «$R») (MvPolynomial «$σ» «$R») $inst $n $a) =>
+    let some (n, _) := (← NormNum.derive n).toInt q(inferInstance) | failure
+    let baseStr ← parsePoly a
+    pure s!"({n} * {baseStr})"
+
+  | ~q($a ^ ($n : ℕ)) =>
+    let .isNat _ n _ ← NormNum.derive (α := q(ℕ)) n | failure
+    let baseStr ← parsePoly a
+    pure s!"{baseStr}^{n.natLit!}"
 
   | ~q(MvPolynomial.X $idx) =>
-    match idx with
-    | ~q(@OfNat.ofNat _ _ $var) =>
-      match var with
-      | .app (.app (.app (.const `Fin.instOfNat _) _) _) n => pure s!"X_{n}"
-      | _ => pure s!"X_{idx}"
+    let ~q(@OfNat.ofNat _ $n $inst) := idx | failure
+    let .isNat _ n _ ← Mathlib.Meta.NormNum.derive (α := q(Nat)) n | failure
+    let idx ← match ← getLevelQ' σ with
+      | ⟨0, ~q(Fin $N)⟩ =>
+        let .isNat _ N  _ ← Mathlib.Meta.NormNum.derive (α := q(Nat)) N | failure
+        -- (OfNat.ofNat n : Fin N) = Fin.mk (n % N) _
+        pure <| n.natLit! % N.natLit!
+      | _ => pure n.natLit!
+    pure s!"X_{idx}"
 
   | ~q(MvPolynomial.C $val) =>
       let r ← Mathlib.Meta.NormNum.derive val
       pure s!"{r.toRat.get!}"
 
-  | ~q(@OfNat.ofNat _ $b $n) =>
+  | ~q(@OfNat.ofNat _ $b $inst) =>
     pure s!"{b}"
 
   | _ =>
-
-    if e.isAppOf ``HAdd.hAdd || e.isAppOf ``Add.add then
-      let b := e.appArg!
-      let a := e.appFn!.appArg!
-
-      let a_q : Q(MvPolynomial $σ $R) := a
-      let b_q : Q(MvPolynomial $σ $R) := b
-
-
-      let aStr ← parsePoly (r:=r) a_q
-      let bStr ← parsePoly (r:=r) b_q
-      pure s!"({aStr} + {bStr})"
-
-    else if e.isAppOf ``HSub.hSub || e.isAppOf ``Sub.sub then
-      let b := e.appArg!
-      let a := e.appFn!.appArg!
-
-      let a_q : Q(MvPolynomial $σ $R) := a
-      let b_q : Q(MvPolynomial $σ $R) := b
-
-      let aStr ← parsePoly (r:=r) a_q
-      let bStr ← parsePoly (r:=r) b_q
-      pure s!"({aStr} - {bStr})"
-
-    else if e.isAppOf ``HMul.hMul || e.isAppOf ``Mul.mul then
-      let b := e.appArg!
-      let a := e.appFn!.appArg!
-
-      let a_q : Q(MvPolynomial $σ $R) := a
-      let b_q : Q(MvPolynomial $σ $R) := b
-
-      let aStr ← parsePoly (r:=r) a_q
-      let bStr ← parsePoly (r:=r) b_q
-      pure s!"{aStr} * {bStr}"
-
-    else if e.isAppOf ``MvPolynomial.X then
-      let idx := e.appArg!
-
-      let idxStr ← Meta.ppExpr idx
-      pure s!"X_{idxStr.pretty}"
-
-    else if e.isAppOf ``OfNat.ofNat then
-       let s ← Meta.ppExpr e
-       pure s.pretty
-
-    else if e.isAppOf ``Neg.neg then
-      let a := e.appArg!
-      let a_q : Q(MvPolynomial $σ $R) := a
-      let aStr ← parsePoly (r:=r) a_q
-      pure s!"(-{aStr})"
-
-    else if e.isAppOf ``HPow.hPow || e.isAppOf ``Pow.pow then
-      let exp := e.appArg!
-      let base := e.appFn!.appArg!
-      let base_q : Q(MvPolynomial $σ $R) := base
-
-      let baseStr ← parsePoly (r:=r) base_q
-
-      let nStr ← (do
-        let expQ : Q(ℕ) := exp
-        let .isNat _ n _ ← NormNum.derive (α := q(ℕ)) expQ | failure
-        pure s!"{n.natLit!}"
-      ) <|> (do
-        let s ← Meta.ppExpr exp
-        pure s.pretty
-      )
-      pure s!"{baseStr}^{nStr}"
-
-    else if e.isAppOf ``DFunLike.coe then
-      let args := e.getAppArgs
-
-      let isTarget := args.size >= 6 && (
-        let fn := args[4]!
-        fn.isAppOf ``MvPolynomial.C || fn.isAppOf ``algebraMap || fn.isAppOf ``RingHom.id
-      )
-
-      if isTarget then
-         let arg := args[5]!
-         let val_q : Q($R) := arg
-         try
-           let r ← Mathlib.Meta.NormNum.derive val_q
-           pure s!"{r.toRat.get!}"
-         catch _ =>
-           let s ← Meta.ppExpr arg
-           pure s.pretty
-      else
-         let s ← Meta.ppExpr e
-         pure s.pretty
-
-    else if e.isAppOf ``MvPolynomial.C then
-      let val := e.appArg!
-      let val_q : Q($R) := val
-      try
-        let r ← Mathlib.Meta.NormNum.derive val_q
-        pure s!"{r.toRat.get!}"
-      catch _ =>
-        let s ← Meta.ppExpr val
-        pure s.pretty
-
-
-    else
-      logWarning m!"[parsePoly] cannot parse the structure: {e}"
-      let s ← Meta.ppExpr e
-      pure s.pretty
-
+    throwError m!"[parsePoly] cannot parse the structure: {e}"
 
 #eval parsePoly q(1 : MvPolynomial Nat Int)
 #eval parsePoly q(X 1 - C (1 / 2): MvPolynomial (Fin 2) ℚ)
@@ -1324,12 +1248,8 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
       got: {polyType}
       Args: {polyType.getAppFnArgs}"
 
-    let u_sigma ← getLevel σ_expr
-    let v_R ← getLevel R_expr
-
-    let σ : Q(Type u_sigma) := σ_expr
-    let R : Q(Type v_R)     := R_expr
-
+    let ⟨_, σ⟩ ← getLevelQ' σ_expr
+    let ⟨_, R⟩ ← getLevelQ' R_expr
     let inst : Q(CommSemiring $R) := inst_expr
 
     let polys ← parseSet' (σ := σ) (R := R) (r := inst) G_expr
@@ -1369,7 +1289,6 @@ elab "add_gb_hyp" name:(ident)? G:term : tactic =>
         let mvarIdNew ← mvarId.assert hypName ty proof
         let (_fvarId, mvarIdNew) ← mvarIdNew.intro1P
         return [mvarIdNew]
-
 
 syntax (name := groebnerMembership) "ideal_membership" : tactic
 @[tactic groebnerMembership]
@@ -1511,9 +1430,8 @@ def evalGroebnerMembership : Tactic := fun _stx => do
 def insertPolyToSetExpr {u v : Level} {σ : Q(Type u)} {R : Q(Type v)}
     {r : Q(CommSemiring $R)}
     (poly : Q(MvPolynomial $σ $R))
-    (set : Q(Set (MvPolynomial $σ $R))) : MetaM Q(Set (MvPolynomial $σ $R)) := do
-
-  return q(Insert.insert $poly $set)
+    (set : Q(Set (MvPolynomial $σ $R))) : Q(Set (MvPolynomial $σ $R)) :=
+  q(Insert.insert $poly $set)
 
 partial def appendPolyToSetExpr {u v : Level} {σ : Q(Type u)} {R : Q(Type v)}
     {r : Q(CommSemiring $R)}
@@ -1700,17 +1618,9 @@ def evalradicalMembership : Tactic := fun _stx => do
   | none => return
   | some expr =>
     match expr with
-    | ~q($f ∈ @Ideal.radical
-            (@MvPolynomial $σ $R $i)
-            $ring
-            (@Ideal.span
-              (@MvPolynomial $σ $R $i)
-              (@CommSemiring.toSemiring
-                 (@MvPolynomial $σ $R $i)
-                 $ring)
-              $I_gens)) =>
+    | ~q($f ∈ Ideal.radical (R := @MvPolynomial $σ $R $i) (Ideal.span $I_gens)) =>
       let f_str ←  parsePoly f
-      let I_gens_list ←  parseSet I_gens
+      let I_gens_list ← parseSet I_gens
 
       let n ← runBackendTask (.radical f_str s!"{I_gens_list}")
 
@@ -1731,19 +1641,7 @@ def evalradicalMembership : Tactic := fun _stx => do
         ))
 
       pure 0
-
-    | ~q(¬ ($f ∈ @Ideal.radical
-          (@MvPolynomial (Fin $n) $R $i)
-          $ring
-          (@Ideal.span
-            (@MvPolynomial (Fin $n) $R $i)
-            (@CommSemiring.toSemiring
-                (@MvPolynomial (Fin $n) $R $i)
-                $ring)
-            $I_gens))) =>
-      let u_level : Level ← getLevel R
-
-      let σ_new : Q(Type) := q(Fin ($n + 1))
+    | ~q(¬ $f ∈ Ideal.radical (R := @MvPolynomial (Fin $n) $R $i) (Ideal.span $I_gens)) =>
 
       let n_term : Term ← Lean.PrettyPrinter.delab n
 
@@ -1754,17 +1652,8 @@ def evalradicalMembership : Tactic := fun _stx => do
          (MvPolynomial.X (Fin.last $n) * (MvPolynomial.rename Fin.castSucc $f))
       )
 
-      let one_sub_tf_term : Term ← Lean.PrettyPrinter.delab one_sub_tf_expr
-
       let I_gens_lifted ← liftPolySet n R i I_gens
-      let new_set_expr ← @insertPolyToSetExpr
-          Level.zero
-          u_level
-          σ_new
-          R
-          i
-          one_sub_tf_expr
-          I_gens_lifted
+      let new_set_expr := insertPolyToSetExpr one_sub_tf_expr I_gens_lifted
 
       let new_set_term : Term ← Lean.PrettyPrinter.delab new_set_expr
 
@@ -1828,7 +1717,6 @@ def evalradicalMembership : Tactic := fun _stx => do
       evalTactic (← `(tactic|
       exact h₁ h
       ))
-
 
     | _ => throwError "Goal must be of form `f ∈ (Ideal.span S).
     radical` or form of `f ∉ (Ideal.span S).radical`"
@@ -1911,17 +1799,9 @@ def evalGBSolve : Tactic := fun stx => do
         exact h_gb
       }))
 
-    | ~q($f ∈ @Ideal.radical
-            (@MvPolynomial $σ $R $i)
-            $ring
-            (@Ideal.span
-              (@MvPolynomial $σ $R $i)
-              (@CommSemiring.toSemiring
-                 (@MvPolynomial $σ $R $i)
-                 $ring)
-              $I_gens)) =>
-      let f_str ←  parsePoly f
-      let I_gens_list ←  parseSet I_gens
+    | ~q($f ∈ Ideal.radical (R := @MvPolynomial $σ $R $i) (Ideal.span $I_gens)) =>
+      let f_str ← parsePoly f
+      let I_gens_list ← parseSet I_gens
 
       let n ← runBackendTask (.radical f_str s!"{I_gens_list}")
 
@@ -1943,19 +1823,7 @@ def evalGBSolve : Tactic := fun stx => do
 
       pure 0
 
-    | ~q(¬ ($f ∈ @Ideal.radical
-          (@MvPolynomial (Fin $n) $R $i)
-          $ring
-          (@Ideal.span
-            (@MvPolynomial (Fin $n) $R $i)
-            (@CommSemiring.toSemiring
-                (@MvPolynomial (Fin $n) $R $i)
-                $ring)
-            $I_gens))) =>
-      let u_level : Level ← getLevel R
-
-      let σ_new : Q(Type) := q(Fin ($n + 1))
-
+    | ~q(¬ $f ∈ Ideal.radical (R := @MvPolynomial (Fin $n) $R $i) (Ideal.span $I_gens)) =>
       let n_term : Term ← Lean.PrettyPrinter.delab n
       let f_term ← Lean.PrettyPrinter.delab f
       let polyType : Term ← Lean.PrettyPrinter.delab q(MvPolynomial (Fin ($n + 1)) $R)
@@ -1967,17 +1835,8 @@ def evalGBSolve : Tactic := fun stx => do
          (MvPolynomial.X (Fin.last $n) * (MvPolynomial.rename Fin.castSucc $f))
       )
 
-      let one_sub_tf_term : Term ← Lean.PrettyPrinter.delab one_sub_tf_expr
-
       let I_gens_lifted ← liftPolySet n R i I_gens
-      let new_set_expr ← @insertPolyToSetExpr
-          Level.zero
-          u_level
-          σ_new
-          R
-          i
-          one_sub_tf_expr
-          I_gens_lifted
+      let new_set_expr := insertPolyToSetExpr one_sub_tf_expr I_gens_lifted
 
       let new_set_term : Term ← Lean.PrettyPrinter.delab new_set_expr
 
