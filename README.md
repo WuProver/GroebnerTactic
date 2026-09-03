@@ -8,6 +8,21 @@ The foundational definitions and core theorems on which this work is built are d
 
 Both the library and its accompanying documentation are  still under development.
 
+## Paper
+
+This project is described in [*Automated Tactics for Polynomial Reasoning in Lean 4*](https://icms-conference.org/2026/papers/paper07/main.pdf).
+
+If you use this project in your work, please cite:
+
+```bibtex
+@inproceedings{shen2026automated,
+  author    = {Hao Shen and Junyu Guo and Junqi Liu and Lihong Zhi},
+  title     = {Automated Tactics for Polynomial Reasoning in {Lean} 4},
+  booktitle = {Proceedings of the International Congress on Mathematical Software ({ICMS} 2026)},
+  year      = {2026},
+  url       = {https://icms-conference.org/2026/papers/paper07/main.pdf}
+}
+```
 
 ## Introduction
 ### Workflow
