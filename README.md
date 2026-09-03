@@ -12,6 +12,8 @@ Both the library and its accompanying documentation are  still under development
 
 This project is described in [*Automated Tactics for Polynomial Reasoning in Lean 4*](https://icms-conference.org/2026/papers/paper07/main.pdf).
 
+The paper was accepted to the International Congress on Mathematical Software (ICMS 2026).
+
 If you use this project in your work, please cite:
 
 ```bibtex
@@ -195,3 +197,7 @@ source newenv/bin/activate
 pip install -r .lake/packages/GroebnerTactic/requirements.txt
 ```
 If you prefer not to install anything, you can use the API mode, but please use it sparingly.
+
+## License
+
+This project is licensed under the [Apache License 2.0](LICENSE).
