@@ -8,24 +8,6 @@ The foundational definitions and core theorems on which this work is built are d
 
 Both the library and its accompanying documentation are  still under development.
 
-## Paper
-
-This project is described in [*Automated Tactics for Polynomial Reasoning in Lean 4*](https://icms-conference.org/2026/papers/paper07/main.pdf).
-
-The paper was accepted to the International Congress on Mathematical Software (ICMS 2026).
-
-If you use this project in your work, please cite:
-
-```bibtex
-@inproceedings{shen2026automated,
-  author    = {Hao Shen and Junyu Guo and Junqi Liu and Lihong Zhi},
-  title     = {Automated Tactics for Polynomial Reasoning in {Lean} 4},
-  booktitle = {Proceedings of the International Congress on Mathematical Software ({ICMS} 2026)},
-  year      = {2026},
-  url       = {https://icms-conference.org/2026/papers/paper07/main.pdf}
-}
-```
-
 ## Introduction
 ### Workflow
 1. Lean to Externel Solvers: We extract mathematical objects (such as  MvPolynomial and generators of Ideals) from the Lean context and employ meta-programming techniques, specifically [Qq](https://github.com/leanprover-community/quote4) matching, or manual pattern matching, to deconstruct and analyze Lean expressions.
@@ -197,6 +179,22 @@ source newenv/bin/activate
 pip install -r .lake/packages/GroebnerTactic/requirements.txt
 ```
 If you prefer not to install anything, you can use the API mode, but please use it sparingly.
+
+## Paper and Citation
+
+This project was described in [*Automated Tactics for Polynomial Reasoning in Lean 4*](https://icms-conference.org/2026/papers/paper07/main.pdf), which was accepted to the International Congress on Mathematical Software (ICMS 2026).
+
+If you use this project in your work, please cite:
+
+```bibtex
+@inproceedings{shen2026automated,
+  author    = {Hao Shen and Junyu Guo and Junqi Liu and Lihong Zhi},
+  title     = {Automated Tactics for Polynomial Reasoning in {Lean} 4},
+  booktitle = {Proceedings of the International Congress on Mathematical Software ({ICMS} 2026)},
+  year      = {2026},
+  url       = {https://icms-conference.org/2026/papers/paper07/main.pdf}
+}
+```
 
 ## License
 
