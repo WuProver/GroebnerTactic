@@ -324,4 +324,392 @@ example :
     -- exact (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal' h₅ h₄).mpr h₃
   simp at h₆
 
+/-!
+## Cyclic3 certificates from the CPP 2027 paper
+
+These examples follow Example 1 (§3.3–3.4, pp. 5–6) of
+`CPP2027_Infinite_Groebner_Bases_Source (11).pdf`, with `X 0 > X 1 > X 2`.
+Write `F = {f₁, f₂, f₃}` for the original cyclic generators and
+`G = {g₁, g₂, g₃}` for the displayed Gröbner basis:
+
+* `f₁ = g₁ = X 0 + X 1 + X 2`;
+* `f₂ = X 0 * X 1 + X 1 * X 2 + X 2 * X 0`, `f₃ = X 0 * X 1 * X 2 - 1`;
+* `g₂ = X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2`, `g₃ = X 2 ^ 3 - 1`.
+
+The coefficients below are explicit certificates, checked in Lean without calling a CAS.
+The first two examples reproduce the paper's S-polynomial calculation. The next two
+exhibit `G ⊆ Ideal.span F` (the remaining generator is `f₁` itself). The last two
+illustrate reduction of the non-reduced generator `g₁'` from §3.4.
+-/
+
+section Cyclic3
+
+-- Polynomial identities use `ring` or the certified sorted-representation equivalence.
+-- Concrete representation equalities and comparisons are normalized with `rfl`;
+-- no decision tactic or native evaluation is used in these Cyclic3 proofs.
+
+-- The S-polynomial identity displayed in Example 1.
+example :
+    lex.sPolynomial (X 0 + X 1 + X 2 : MvPolynomial (Fin 3) ℚ)
+      (X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2) =
+      (-X 1 * X 2 - X 2 ^ 2) * (X 0 + X 1 + X 2) +
+        (X 1 + X 2) * (X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2) := by
+  rw [MvPolynomial.SortedRepr.eq_iff']
+  with_unfolding_all rfl
+
+-- The identity is a valid division certificate: its products satisfy the degree bounds.
+example :
+    lex.IsRemainder
+      (lex.sPolynomial (X 0 + X 1 + X 2 : MvPolynomial (Fin 3) ℚ)
+        (X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2))
+      {X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1} 0 := by
+  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+  rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+  use [-X 1 * X 2 - X 2 ^ 2, X 1 + X 2, 0].get
+  split_ands
+  · set_option backward.isDefEq.respectTransparency false in
+    simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+    all_goals
+      rw [MvPolynomial.SortedRepr.eq_iff']
+      with_unfolding_all rfl
+  · intro i
+    fin_cases i
+    all_goals
+      simp only [List.get, Fin.isValue]
+      exact withBotDegree_le_of_repr_le <| by
+        exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+  · simp
+
+-- g₂ = (X 1 + X 2) * f₁ - f₂.
+example :
+    X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2 ∈
+      Ideal.span ({X 0 + X 1 + X 2,
+        X 0 * X 1 + X 1 * X 2 + X 2 * X 0,
+        X 0 * X 1 * X 2 - 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+  submodule_span [X 1 + X 2, -1, 0]
+  ring
+
+-- g₃ = X 2² * f₁ - X 2 * f₂ + f₃ (an elimination certificate).
+example :
+    X 2 ^ 3 - 1 ∈
+      Ideal.span ({X 0 + X 1 + X 2,
+        X 0 * X 1 + X 1 * X 2 + X 2 * X 0,
+        X 0 * X 1 * X 2 - 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+  submodule_span [X 2 ^ 2, -X 2, 1]
+  ring
+
+-- §3.4: g₁' = g₁ + g₂, so it has zero remainder modulo G.
+example :
+    lex.IsRemainder
+      (X 0 + X 1 ^ 2 + X 1 * X 2 + X 1 + X 2 ^ 2 + X 2 :
+        MvPolynomial (Fin 3) ℚ)
+      {X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1} 0 := by
+  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+  rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+  use [1, 1, 0].get
+  split_ands
+  · set_option backward.isDefEq.respectTransparency false in
+    simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+    all_goals ring
+  · intro i
+    fin_cases i
+    all_goals
+      simp only [List.get, Fin.isValue]
+      exact withBotDegree_le_of_repr_le <| by
+        exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+  · simp
+
+-- Reducing g₁' by {g₂, g₃} leaves g₁, exactly the replacement described in §3.4.
+example :
+    lex.IsRemainder
+      (X 0 + X 1 ^ 2 + X 1 * X 2 + X 1 + X 2 ^ 2 + X 2 :
+        MvPolynomial (Fin 3) ℚ)
+      {X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1}
+      (X 0 + X 1 + X 2) := by
+  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+  rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+  use [1, 0].get
+  split_ands
+  · set_option backward.isDefEq.respectTransparency false in
+    simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+    all_goals ring
+  · intro i
+    fin_cases i
+    all_goals
+      simp only [List.get, Fin.isValue]
+      exact withBotDegree_le_of_repr_le <| by
+        exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+  · rw [Function.Surjective.forall (AddEquiv.surjective (SortedFinsupp.lexAddEquiv compare))]
+    simp only [MvPolynomial.SortedRepr.support_eq, Finset.mem_map_equiv,
+      Fin.isValue, List.length_nil, List.length_cons,
+      EquivLike.coe_symm_apply_apply, List.mem_toFinset]
+    intro x h i
+    fin_cases i
+    all_goals
+      simp only [List.get]
+      rw [← tsub_eq_zero_iff_le, MvPolynomial.SortedRepr.lex_degree_eq]
+      convert_to _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
+      rw [← SortedFinsupp.toFinsupp_tsub, SortedFinsupp.toFinsupp_eq_zero_iff]
+      with_unfolding_all
+        change x ∈ [toLex (SortedFinsupp.single compare (0 : Fin 3) 1),
+          toLex (SortedFinsupp.single compare (1 : Fin 3) 1),
+          toLex (SortedFinsupp.single compare (2 : Fin 3) 1)] at h
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at h
+      rcases h with rfl | rfl | rfl
+      all_goals
+        intro _ heq
+        have hlen := congrArg
+          (fun p : SortedFinsupp (Fin 3) ℕ compare ↦ p.val.val.length) heq
+        with_unfolding_all change 1 = 0 at hlen
+        omega
+
+end Cyclic3
+
+/-!
+## Completing the Cyclic3 verification
+
+The remaining critical pairs, equality of the generated ideals, and Buchberger's
+criterion complete the Gröbner-basis claim in Example 1. Named certificates can be
+reused in subsequent ideal-membership examples. All witnesses are explicit.
+-/
+
+namespace Cyclic3Certificates
+
+-- S(g₁, g₃) = g₁ + (X 1 + X 2) * g₃.
+theorem sPolynomial13 :
+    lex.IsRemainder (lex.sPolynomial (X 0 + X 1 + X 2 : MvPolynomial (Fin 3) ℚ)
+      (X 2 ^ 3 - 1))
+      {X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1} 0 := by
+  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+  rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+  use [1, 0, X 1 + X 2].get
+  split_ands
+  · set_option backward.isDefEq.respectTransparency false in
+    simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+    all_goals
+      rw [MvPolynomial.SortedRepr.eq_iff']
+      with_unfolding_all rfl
+  · intro i
+    fin_cases i
+    all_goals
+      simp only [List.get, Fin.isValue]
+      exact withBotDegree_le_of_repr_le <| by
+        exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+  · simp
+
+-- S(g₂, g₃) = g₂ + (X 1 * X 2 + X 2²) * g₃.
+theorem sPolynomial23 :
+    lex.IsRemainder (lex.sPolynomial (X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2 : MvPolynomial (Fin 3) ℚ)
+      (X 2 ^ 3 - 1))
+      {X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1} 0 := by
+  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+  rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+  use [0, 1, X 1 * X 2 + X 2 ^ 2].get
+  split_ands
+  · set_option backward.isDefEq.respectTransparency false in
+    simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+    all_goals
+      rw [MvPolynomial.SortedRepr.eq_iff']
+      with_unfolding_all rfl
+  · intro i
+    fin_cases i
+    all_goals
+      simp only [List.get, Fin.isValue]
+      exact withBotDegree_le_of_repr_le <| by
+        exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+  · simp
+
+-- Both inclusions are certified against the original generators, without a CAS.
+theorem span_eq :
+    Ideal.span ({X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1}
+        : Set (MvPolynomial (Fin 3) ℚ)) =
+      Ideal.span ({X 0 + X 1 + X 2,
+        X 0 * X 1 + X 1 * X 2 + X 2 * X 0, X 0 * X 1 * X 2 - 1}
+        : Set (MvPolynomial (Fin 3) ℚ)) := by
+  apply le_antisymm
+  · rw [Ideal.span_le]
+    intro p hp
+    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hp
+    rcases hp with rfl | rfl | rfl
+    · change _ ∈ (_ : Ideal _)
+      submodule_span [1, 0, 0]
+      ring
+    · change _ ∈ (_ : Ideal _)
+      submodule_span [X 1 + X 2, -1, 0]
+      ring
+    · change _ ∈ (_ : Ideal _)
+      submodule_span [X 2 ^ 2, -X 2, 1]
+      ring
+  · rw [Ideal.span_le]
+    intro p hp
+    simp only [Set.mem_insert_iff, Set.mem_singleton_iff] at hp
+    rcases hp with rfl | rfl | rfl
+    · change _ ∈ (_ : Ideal _)
+      submodule_span [1, 0, 0]
+      ring
+    · change _ ∈ (_ : Ideal _)
+      submodule_span [X 1 + X 2, -1, 0]
+      ring
+    · change _ ∈ (_ : Ideal _)
+      submodule_span [X 1 * X 2, -X 2, 1]
+      ring
+
+-- Check all nine ordered pairs, including the three self-pairs.
+theorem groebnerBasis_span :
+    lex.IsGroebnerBasis ({X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1}
+        : Set (MvPolynomial (Fin 3) ℚ))
+      (Ideal.span {X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1}) := by
+  rw [IsGroebnerBasis.isGroebnerBasis_iff_isRemainder_sPolynomial_zero]
+  · simp only [Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
+      forall_eq_or_imp, forall_eq]
+    refine ⟨⟨?_, ?_, ?_⟩, ⟨?_, ?_, ?_⟩, ⟨?_, ?_, ?_⟩⟩
+    · simp [sPolynomial_self]
+    · simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+      rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+      use [-X 1 * X 2 - X 2 ^ 2, X 1 + X 2, 0].get
+      split_ands
+      · set_option backward.isDefEq.respectTransparency false in
+        simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+        all_goals
+          rw [MvPolynomial.SortedRepr.eq_iff']
+          with_unfolding_all rfl
+      · intro i
+        fin_cases i
+        all_goals
+          simp only [List.get, Fin.isValue]
+          exact withBotDegree_le_of_repr_le <| by
+            exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+      · simp
+    · exact sPolynomial13
+    · simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+      rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+      use [X 1 * X 2 + X 2 ^ 2, -(X 1 + X 2), 0].get
+      split_ands
+      · set_option backward.isDefEq.respectTransparency false in
+        simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+        all_goals
+          rw [MvPolynomial.SortedRepr.eq_iff']
+          with_unfolding_all rfl
+      · intro i
+        fin_cases i
+        all_goals
+          simp only [List.get, Fin.isValue]
+          exact withBotDegree_le_of_repr_le <| by
+            exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+      · simp
+    · simp [sPolynomial_self]
+    · exact sPolynomial23
+    · simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+      rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+      use [-1, 0, -(X 1 + X 2)].get
+      split_ands
+      · set_option backward.isDefEq.respectTransparency false in
+        simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+        all_goals
+          rw [MvPolynomial.SortedRepr.eq_iff']
+          with_unfolding_all rfl
+      · intro i
+        fin_cases i
+        all_goals
+          simp only [List.get, Fin.isValue]
+          exact withBotDegree_le_of_repr_le <| by
+            exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+      · simp
+    · simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+      rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+      use [0, -1, -(X 1 * X 2 + X 2 ^ 2)].get
+      split_ands
+      · set_option backward.isDefEq.respectTransparency false in
+        simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+        all_goals
+          rw [MvPolynomial.SortedRepr.eq_iff']
+          with_unfolding_all rfl
+      · intro i
+        fin_cases i
+        all_goals
+          simp only [List.get, Fin.isValue]
+          exact withBotDegree_le_of_repr_le <| by
+            exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+      · simp
+    · simp [sPolynomial_self]
+  · simp only [Set.mem_insert_iff, Set.mem_singleton_iff, forall_eq_or_imp, forall_eq,
+      isUnit_iff_ne_zero, ne_eq, leadingCoeff_eq_zero_iff]
+    refine ⟨?_, ?_, ?_⟩
+    · intro h
+      have hc := congrArg (eval (fun _ : Fin 3 ↦ (1 : ℚ))) h
+      norm_num at hc
+    · intro h
+      have hc := congrArg (eval (fun _ : Fin 3 ↦ (1 : ℚ))) h
+      norm_num at hc
+    · intro h
+      have hc := congrArg (coeff (0 : Fin 3 →₀ ℕ)) h
+      norm_num [coeff_sub, X_pow_eq_monomial, coeff_monomial] at hc
+
+-- The basis is for the original Cyclic3 ideal, not merely its own span.
+theorem groebnerBasis_original :
+    lex.IsGroebnerBasis ({X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1}
+        : Set (MvPolynomial (Fin 3) ℚ))
+      (Ideal.span ({X 0 + X 1 + X 2,
+        X 0 * X 1 + X 1 * X 2 + X 2 * X 0, X 0 * X 1 * X 2 - 1}
+        : Set (MvPolynomial (Fin 3) ℚ))) := by
+  rw [← span_eq]
+  exact groebnerBasis_span
+
+
+-- A nonzero normal form: X 2 is not forced to equal 1 by the Cyclic3 equations.
+theorem remainder_X2_sub_one :
+    lex.IsRemainder (X 2 - 1 : MvPolynomial (Fin 3) ℚ)
+      {X 0 + X 1 + X 2, X 1 ^ 2 + X 1 * X 2 + X 2 ^ 2, X 2 ^ 3 - 1}
+      (X 2 - 1) := by
+  simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
+  rw [IsRemainder.isRemainder_range_fintype, ← exists_and_right]
+  use [0, 0, 0].get
+  split_ands
+  · set_option backward.isDefEq.respectTransparency false in
+    simp [Fin.univ_succ, -List.get_eq_getElem, List.get]
+  · intro i
+    fin_cases i
+    all_goals
+      simp only [List.get, Fin.isValue]
+      exact withBotDegree_le_of_repr_le <| by
+        exact (Std.LawfulLECmp.isLE_iff_le (cmp := compare)).mp (by with_unfolding_all rfl)
+  · rw [Function.Surjective.forall (AddEquiv.surjective (SortedFinsupp.lexAddEquiv compare))]
+    simp only [MvPolynomial.SortedRepr.support_eq, Finset.mem_map_equiv,
+      Fin.isValue, List.length_nil, List.length_cons,
+      EquivLike.coe_symm_apply_apply, List.mem_toFinset]
+    intro x h i
+    fin_cases i
+    all_goals
+      simp only [List.get]
+      rw [← tsub_eq_zero_iff_le, MvPolynomial.SortedRepr.lex_degree_eq]
+      convert_to _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
+      rw [← SortedFinsupp.toFinsupp_tsub, SortedFinsupp.toFinsupp_eq_zero_iff]
+      with_unfolding_all
+        change x ∈ [toLex (SortedFinsupp.single compare (2 : Fin 3) 1), 0] at h
+      simp only [List.mem_cons, List.not_mem_nil, or_false] at h
+      rcases h with rfl | rfl
+      all_goals
+        intro _ heq
+        have hlen := congrArg
+          (fun p : SortedFinsupp (Fin 3) ℕ compare ↦ p.val.val.length) heq
+        with_unfolding_all change 1 = 0 at hlen
+        omega
+
+-- Combine the certified basis and nonzero remainder to prove non-membership.
+example :
+    X 2 - 1 ∉ Ideal.span ({X 0 + X 1 + X 2,
+      X 0 * X 1 + X 1 * X 2 + X 2 * X 0,
+      X 0 * X 1 * X 2 - 1} : Set (MvPolynomial (Fin 3) ℚ)) := by
+  intro h
+  have hz : (X 2 - 1 : MvPolynomial (Fin 3) ℚ) = 0 :=
+    (IsGroebnerBasis.remainder_eq_zero_iff_mem_ideal
+      groebnerBasis_original remainder_X2_sub_one).mpr h
+  have hn : (X 2 - 1 : MvPolynomial (Fin 3) ℚ) ≠ 0 := by
+    intro hzero
+    have hc := congrArg (coeff (0 : Fin 3 →₀ ℕ)) hzero
+    norm_num [coeff_sub, coeff_X'] at hc
+  exact hn hz
+
+end Cyclic3Certificates
+
 end
