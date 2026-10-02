@@ -165,7 +165,7 @@ example:
           lex.IsGroebnerBasis basis (Ideal.span basis) := by
       basis
     have h_ideal : Ideal.span ({X 1^3 - X 2^2, X 0^2 - X 1, X 0*X 1 - X 2, X 0*X 2 - X 1^2} : Set <| MvPolynomial (Fin 3) ℚ) = Ideal.span ({X 0^2 - X 1, X 0^3 - X 2} : Set <| MvPolynomial (Fin 3) ℚ) := by
-      ideal
+      idealeq
     simp [h_ideal] at h_gb
     exact h_gb
 
@@ -299,22 +299,7 @@ example :
       have t₂: (1 - X 2) ∈ Ideal.span ({1-X 2} : Set (MvPolynomial (Fin 3) ℚ)) := by
         exact Ideal.mem_span_singleton_self (1 - X 2)
       exact t₁ t₂
-    rw [h₁]
-    apply Ideal.add_mem _ l₁ l₂
-    rw [← h₁]
-    refine ⟨Ideal.span {1 - X 2, X 0, X 1}, ?_⟩
-    ext x
-    constructor
-    · intro h
-      simp at h
-      have l: ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ)) ⊆ (Ideal.span ({1 - X 2, X 0, X 1} : Set (MvPolynomial (Fin 3) ℚ))) := by
-        exact Ideal.subset_span
-      exact h l
-    · intro h
-      simp
-      intro a
-      simp at h
-      exact h
+    simpa only [← h₁] using (Ideal.add_mem _ l₁ l₂)
   have h₄ : lex.IsRemainder (1: MvPolynomial (Fin 3) ℚ)
       {1 - X 2, X 0, X 1} 1 := by
     remainder

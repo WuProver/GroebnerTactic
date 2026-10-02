@@ -69,6 +69,7 @@ example :
       (- C (2/9 : ℚ) * X 1) := by
   gb_solve
 
+set_option maxHeartbeats 800000 in
 example :
     lex.IsRemainder (X 0 ^ 2 + X 1 ^ 2 : MvPolynomial (Fin 3) ℚ)
       {X 0 + C (1/2 : ℚ) * X 1}
