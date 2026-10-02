@@ -10,21 +10,22 @@ relaxedAutoImplicit = false
 weak.linter.mathlibStandardSet = true
 maxSynthPendingDepth = 3
 
-# [[require]]
-# name = "mathlib"
-# scope = "leanprover-community"
-# rev = "v4.24.0-rc1"
-
-[[require]]
-name = "groebner"
-# git = "https://github.com/WuProver/groebner_proj.git"
-scope = "WuProver"
-# rev = "main"
-
 [[require]]
 name = "MonomialOrderedPolynomial"
 git = "https://github.com/WuProver/MonomialOrderedPolynomial.git"
-scope  = "WuProver"
+scope = "WuProver"
+rev = "94262b086a817bb6eacefd92c3b87dfc85402a2d"
+
+[[require]]
+name = "groebner"
+git = "https://github.com/WuProver/groebner_proj"
+scope = "WuProver"
+rev = "a34921b6a211a8242c3aaf39759a6d48c6b67e67"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.34.1"
 
 [[lean_lib]]
 name = "GroebnerTac"

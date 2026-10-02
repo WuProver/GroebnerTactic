@@ -79,7 +79,6 @@ theorem Rabinovich_method (I : Ideal (MvPolynomial σ K)) (f : MvPolynomial σ K
       rw [val_t, val_f]
       rw [IsLocalization.mk'_spec]
       simp
-      exact sub_self 1
     have h_image : (1 : R_f) ∈ I.map (algebraMap R R_f) := by
       rw [← map_one φ]
       have step := Ideal.mem_map_of_mem φ h
@@ -202,7 +201,6 @@ theorem Rabinovich_method'
       rw [val_t, val_f]
       rw [IsLocalization.mk'_spec]
       simp
-      exact sub_self 1
     have h_image : (1 : R_f) ∈ I.map (algebraMap R R_f) := by
       rw [← map_one φ]
       have step := Ideal.mem_map_of_mem φ h
