@@ -5,7 +5,6 @@ import Groebner.Groebner
 import Groebner.ToMathlib.List
 import GroebnerTac.GbOption
 
-import Lean.Meta.Tactic.Grind.Arith.CommRing.Poly
 import Lean.Meta.Tactic.TryThis
 
 import Mathlib.Tactic
@@ -600,7 +599,8 @@ def mkSetSyntaxFromTerms (terms : Array Term) : MetaM Term := do
 /-
 In this section, we define the tactics to call Sage to prove some algebraic facts
 -/
-def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit := do
+def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit :=
+  withOptions (fun opts => opts.setBool `backward.isDefEq.respectTransparency false) do
   let runUse := fun x => do Mathlib.Tactic.runUse false (← Mathlib.Tactic.mkUseDischarger .none) [x]
 
   evalTactic (← `(tactic|
@@ -646,7 +646,7 @@ def verifyRemainderLogic (witness : Term) (isZeroTarget : Bool) : TacticM Unit :
         all_goals
           simp only [List.get]
           rw [← tsub_eq_zero_iff_le, MvPolynomial.SortedRepr.lex_degree_eq]
-          convert_to _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
+          change _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
           rw [← SortedFinsupp.toFinsupp_tsub, SortedFinsupp.toFinsupp_eq_zero_iff]
           decide +kernel +revert
     ))
@@ -795,7 +795,8 @@ def evalRemainderTactic : Tactic := fun stx => do
 
 
 
-elab "remainder_zero" : tactic => do
+elab "remainder_zero" : tactic =>
+  withOptions (fun opts => opts.setBool `backward.isDefEq.respectTransparency false) do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
@@ -860,7 +861,8 @@ elab "remainder_zero" : tactic => do
       dbg_trace "not a lex.IsRemainder"
 
 
-elab "remainder_neq_zero" : tactic => do
+elab "remainder_neq_zero" : tactic =>
+  withOptions (fun opts => opts.setBool `backward.isDefEq.respectTransparency false) do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
@@ -934,14 +936,15 @@ elab "remainder_neq_zero" : tactic => do
           all_goals
             simp only [List.get]
             rw [← tsub_eq_zero_iff_le, MvPolynomial.SortedRepr.lex_degree_eq]
-            convert_to _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
+            change _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
             rw [← SortedFinsupp.toFinsupp_tsub, SortedFinsupp.toFinsupp_eq_zero_iff]
             decide +kernel +revert
       ))
     | _ =>
       dbg_trace "not a lex.IsRemainder"
 
-elab "basis" : tactic  => do
+elab "basis" : tactic  =>
+  withOptions (fun opts => opts.setBool `backward.isDefEq.respectTransparency false) do
   let goal ← Lean.Elab.Tactic.getMainGoal
   -- logInfo m!"[DEBUG `basis` Goal] : {goal}"
   let t ← goal.getType
@@ -964,7 +967,7 @@ elab "basis" : tactic  => do
       let parsedTermsArray ← arr.mapM mkPolyListTerm
 
       evalTactic (← `(tactic|
-        rw [MonomialOrder.IsGroebnerBasis.isGroebnerBasis_iff_isRemainder_sPolynomial_zero]
+        rw [MonomialOrder.IsGroebnerBasis.iff_isRemainder_sPolynomial_zero]
       ))
       evalTactic (← `(tactic|
         simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
@@ -1006,7 +1009,7 @@ elab "basis" : tactic  => do
         ))
         evalTactic (← `(tactic|
         · simp))
-      evalTactic (← `(tactic| simp))
+      evalTactic (← `(tactic| try simp))
       let gs ← getUnsolvedGoals
       unless gs.isEmpty do
         evalTactic (← `(tactic| decide +kernel))
@@ -1087,7 +1090,7 @@ elab "submodule_span" "[" coeffs:term,* "]" : tactic => do
       (smul coeffs.back! bases.back!)
     else q(0)
 
-  let sumMemSpan : Q($sum ∈ Submodule.span $R $s) ←
+  let sumMemSpan : Q($sum ∈ Submodule.span $R $basesSet) ←
     match coeffs.size with
     | 0 => pure <| show Q($sum ∈ Submodule.span $R $basesSet) from
       show Q(0 ∈ Submodule.span $R $basesSet) from
@@ -1197,8 +1200,7 @@ elab "basis'" : tactic  => do
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
           simp
           -- ideal
-        simp only [h_ideal] at h_gb
-        exact h_gb
+        simpa only [h_ideal] using h_gb
       }))
 
 
@@ -1226,8 +1228,7 @@ elab "base" : tactic  => do
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
           -- simp
           idealeq
-        simp only [h_ideal] at h_gb
-        exact h_gb
+        simpa only [h_ideal] using h_gb
       }))
 
 elab "add_gb_hyp" name:(ident)? G:term : tactic =>
@@ -1725,7 +1726,8 @@ def evalradicalMembership : Tactic := fun _stx => do
 
 syntax (name := GBSolve) "gb_solve" : tactic
 @[tactic GBSolve]
-def evalGBSolve : Tactic := fun stx => do
+def evalGBSolve : Tactic := fun stx =>
+  withOptions (fun opts => opts.setBool `backward.isDefEq.respectTransparency false) do
   let goal ← Lean.Elab.Tactic.getMainGoal
   let t ← goal.getType
   let t ← checkTypeQ t q(Prop)
@@ -1795,8 +1797,7 @@ def evalGBSolve : Tactic := fun stx => do
           basis
         have h_ideal : Ideal.span ($basis_term : Set $polyType) = $ideal_term := by
           idealeq
-        simp only [h_ideal] at h_gb
-        exact h_gb
+        simpa only [h_ideal] using h_gb
       }))
 
     | ~q($f ∈ Ideal.radical (R := @MvPolynomial $σ $R $i) (Ideal.span $I_gens)) =>

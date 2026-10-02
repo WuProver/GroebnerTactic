@@ -8,6 +8,8 @@ import GroebnerTac.Tactic
 In this file we show some templates of using those problem.
 -/
 
+set_option backward.isDefEq.respectTransparency false
+
 section
 open MvPolynomial MonomialOrder
 
@@ -73,7 +75,7 @@ example :
       all_goals
         simp only [List.get]
         rw [← tsub_eq_zero_iff_le, MvPolynomial.SortedRepr.lex_degree_eq]
-        convert_to _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
+        change _ → ¬ SortedFinsupp.toFinsupp _ - SortedFinsupp.toFinsupp x = 0
         rw [← SortedFinsupp.toFinsupp_tsub, SortedFinsupp.toFinsupp_eq_zero_iff]
         decide +kernel +revert
 
@@ -81,7 +83,7 @@ example :
 example :
     letI basis := ({X 0 + X 1 ^ 2, X 1 ^ 2} : Set <| MvPolynomial (Fin 3) ℚ)
     lex.IsGroebnerBasis basis (Ideal.span basis) := by
-  rw [MonomialOrder.IsGroebnerBasis.isGroebnerBasis_iff_isRemainder_sPolynomial_zero]
+  rw [MonomialOrder.IsGroebnerBasis.iff_isRemainder_sPolynomial_zero]
   simp only [Fin.isValue, Subtype.forall, Set.mem_insert_iff, Set.mem_singleton_iff,
     forall_eq_or_imp, forall_eq, sPolynomial_self]
   simp only [← Set.range_get_singleton, ← Set.range_get_cons_list]
